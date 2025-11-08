@@ -1,17 +1,14 @@
-﻿// Models/Vehicle.cs
+﻿// Models/TransportoPriemone.cs
 using Api.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Api.Models
 {
-    [Table("vehicles")] // Explicit table name for PostgreSQL
-    public class Vehicle
+    [Table("transporto_priemone")] // Match your actual table name
+    public class TransportoPriemone
     {
         [Key]
-        [Column("id")]
-        public int Id { get; set; }
-
         [Required]
         [StringLength(20)]
         [Column("valstybiniai_num")]
