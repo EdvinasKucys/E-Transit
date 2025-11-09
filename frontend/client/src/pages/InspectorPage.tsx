@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { ticketService } from "../services/TicketService";
+import { ticketValidationService } from "../services/TicketValidationService";
 
 const InspectorPage: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -11,7 +11,7 @@ const InspectorPage: React.FC = () => {
   const [ticketId, setTicketId] = useState("");
   const [vehicleCode, setVehicleCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ valid: boolean; message: string; expiresAt?: string } | null>(null);
+  const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSignOut = () => {
@@ -29,20 +29,17 @@ const InspectorPage: React.FC = () => {
     setResult(null);
     setLoading(true);
     try {
-      const res = await ticketService.validate(ticketId.trim(), {
+      // 👇 THIS is the actual call to your controller
+      const res = await ticketValidationService.validate(ticketId.trim(), {
         transportoPriemonesKodas: vehicleCode.trim() || null,
       });
-      setResult({
-        valid: res.valid,
-        message: res.valid
-          ? "Bilietas galiojantis"
-          : res.reason || "Bilietas negaliojantis",
-        expiresAt: res.expiresAt,
-      });
+
+      // depending on what your controller returns, adjust these names
+      setResult(res);
     } catch (err: any) {
       setResult({
         valid: false,
-        message: err.message || "Nepavyko patikrinti bilieto",
+        message: err?.response?.data ?? "Nepavyko patikrinti bilieto",
       });
     } finally {
       setLoading(false);
@@ -58,7 +55,7 @@ const InspectorPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      {/* Header */}
+      {/* header like your other pages */}
       <header className="flex items-center justify-between px-6 py-4 bg-white shadow">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
@@ -76,10 +73,9 @@ const InspectorPage: React.FC = () => {
         </button>
       </header>
 
-      {/* Body */}
       <div className="container mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-left">Bilieto tikrinimas</h2>
+          <h2 className="text-xl font-bold">Bilieto tikrinimas</h2>
           <button
             onClick={handleClear}
             className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-md text-sm"
@@ -120,12 +116,14 @@ const InspectorPage: React.FC = () => {
             </button>
           </form>
 
+          {/* errors */}
           {error && (
             <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
               {error}
             </div>
           )}
 
+          {/* result from controller */}
           {result && (
             <div
               className={`mt-4 px-3 py-2 rounded text-sm ${
@@ -135,11 +133,9 @@ const InspectorPage: React.FC = () => {
               }`}
             >
               <p className="font-medium">
-                {result.valid
-                  ? "Bilietas galiojantis"
-                  : "Bilietas negaliojantis"}
+                {result.valid ? "Bilietas galiojantis" : "Bilietas negaliojantis"}
               </p>
-              <p>{result.message}</p>
+              {result.message && <p>{result.message}</p>}
               {result.expiresAt && (
                 <p className="text-xs text-slate-500 mt-1">
                   Galioja iki: {new Date(result.expiresAt).toLocaleString()}

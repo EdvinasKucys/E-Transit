@@ -1,76 +1,56 @@
 // src/services/ticketService.ts
-import { API_CONFIG } from "../api/apiClient";
+import axios from "axios";
 
-export interface Ticket {
+// change this to your backend URL
+const API_BASE = "http://localhost:5000";
+
+export interface TicketDto {
   id: string;
   naudotojas: string | null;
   pirkimoData: string;
-  aktyvavimoData: string | null;
+  aktyvavimoData?: string | null;
   bazineKaina: number;
   galutineKaina: number;
-  nuolaidaId: number | null;
-  transportoPriemonesKodas: string | null;
+  nuolaidaId?: number | null;
+  transportoPriemonesKodas?: string | null;
   statusas: number;
 }
 
-export interface PurchaseTicketDto {
-  naudotojas?: string | null;
-  nuolaidaId?: number | null;
-}
+export const ticketService = {
+  // 1) PASSENGER: get their tickets
+  async getPassengerTickets(user?: string) {
+    const res = await axios.get<TicketDto[]>(
+      `${API_BASE}/api/passenger/tickets`,
+      user ? { params: { user } } : undefined
+    );
+    return res.data;
+  },
 
-export interface MarkTicketDto {
-  transportoPriemonesKodas: string;
-}
+  // 2) PASSENGER: buy a ticket
+  async purchase(data: { naudotojas?: string | null; nuolaidaId?: number | null }) {
+    const res = await axios.post<TicketDto>(
+      `${API_BASE}/api/passenger/tickets/purchase`,
+      {
+        naudotojas: data.naudotojas ?? null,
+        nuolaidaId: data.nuolaidaId ?? null,
+      }
+    );
+    return res.data;
+  },
 
-export interface ValidateTicketDto {
-  transportoPriemonesKodas?: string | null;
-}
+  // 3) PASSENGER: mark (pažymėti) a ticket
+  async mark(ticketId: string, data: { transportoPriemonesKodas?: string | null }) {
+    await axios.post(
+      `${API_BASE}/api/passenger/tickets/${ticketId}/mark`,
+      {
+        transportoPriemonesKodas: data.transportoPriemonesKodas ?? null,
+      }
+    );
+  },
 
-class TicketService {
-  private baseUrl = `${API_CONFIG.baseURL}/tickets`;
-
-  async getAll(): Promise<Ticket[]> {
-    const res = await fetch(this.baseUrl);
-    if (!res.ok) {
-      throw new Error("Failed to fetch tickets");
-    }
-    return res.json();
-  }
-
-  async purchase(data: PurchaseTicketDto): Promise<Ticket> {
-    const res = await fetch(`${this.baseUrl}/purchase`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || "Failed to purchase ticket");
-    }
-    return res.json();
-  }
-
-  async mark(ticketId: string, data: MarkTicketDto): Promise<void> {
-    const res = await fetch(`${this.baseUrl}/${ticketId}/mark`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || "Failed to mark ticket");
-    }
-  }
-
-  async validate(ticketId: string, data: ValidateTicketDto): Promise<any> {
-    const res = await fetch(`${this.baseUrl}/${ticketId}/validate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    // validate endpoint returns JSON like { valid: true/false, ... }
-    return res.json();
-  }
-}
-
-export const ticketService = new TicketService();
+  // 4) ADMIN: get all tickets
+  async getAllAdminTickets() {
+    const res = await axios.get<TicketDto[]>(`${API_BASE}/api/admin/tickets`);
+    return res.data;
+  },
+};

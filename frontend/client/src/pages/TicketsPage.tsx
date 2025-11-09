@@ -1,266 +1,222 @@
-// src/pages/TicketsPage.tsx
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { ticketService, Ticket } from "../services/TicketService";
-
-const statusLabels: Record<number, string> = {
-  1: "Nupirktas",
-  2: "Aktyvuotas",
-  3: "Pasibaigęs",
-  4: "Negaliojantis",
-};
-
-const DISCOUNT_OPTIONS = [
-  { value: "", label: "Be nuolaidos" },
-  { value: "1", label: "Studento nuolaida" },
-  { value: "2", label: "Moksleivio nuolaida" },
-  { value: "3", label: "Senjoro nuolaida" },
-];
-
-const PAYMENT_METHODS = [
-  { value: "card", label: "Banko kortelė" },
-  { value: "mobile", label: "Mobilus apmokėjimas" },
-  { value: "G-Pay", label: "Google pay" },
-];
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { ticketService } from "../services/TicketService";
+import { useAuth } from "../context/AuthContext";
 
 const TicketsPage: React.FC = () => {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // buy
-  const [email, setEmail] = useState("");
-  const [selectedDiscount, setSelectedDiscount] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("card");
+  const [selectedDiscount, setSelectedDiscount] = useState<string>("0");
+  const [paymentMethod, setPaymentMethod] = useState<string>("kortele");
+  const [ticketId, setTicketId] = useState<string>("");
+  const [vehicleCode, setVehicleCode] = useState<string>("");
 
-  // mark (this can stay, it’s still a passenger action in your system)
-  const [markId, setMarkId] = useState("");
-  const [markVehicle, setMarkVehicle] = useState("");
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
-  const loadTickets = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await ticketService.getAll();
-      setTickets(data);
-    } catch (err) {
-      console.error(err);
-      setError("Nepavyko gauti bilietų sąrašo");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Load existing tickets
   useEffect(() => {
-    loadTickets();
+    const fetchTickets = async () => {
+      try {
+        setLoading(true);
+        const data = await ticketService.getPassengerTickets();
+        setTickets(data);
+      } catch (err) {
+        console.error(err);
+        setError("Nepavyko gauti bilietų duomenų.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTickets();
   }, []);
 
-  const handleBuy = async (e: React.FormEvent) => {
+  // Buy a new ticket
+  const handleBuyTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await ticketService.purchase({
-        naudotojas: email || null,
-        nuolaidaId: selectedDiscount ? Number(selectedDiscount) : null,
-        // paymentMethod would go here if backend supports
+      const newTicket = await ticketService.purchase({
+        naudotojas: user?.name ?? null,
+        nuolaidaId: parseInt(selectedDiscount) || null,
       });
-
-      setEmail("");
-      setSelectedDiscount("");
-      await loadTickets();
-    } catch (err: any) {
-      alert(err.message);
+      alert(`Bilietas sėkmingai nupirktas!\nID: ${newTicket.id}`);
+      setTickets((prev) => [...prev, newTicket]);
+    } catch (err) {
+      console.error(err);
+      setError("Nepavyko nupirkti bilieto.");
     }
   };
 
-  const handleMark = async (e: React.FormEvent) => {
+  // Mark (activate) a ticket
+  const handleMarkTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!markId) return;
     try {
-      await ticketService.mark(markId, {
-        transportoPriemonesKodas: markVehicle || "",
+      await ticketService.mark(ticketId, {
+        transportoPriemonesKodas: vehicleCode || null,
       });
-      setMarkId("");
-      setMarkVehicle("");
-      await loadTickets();
-    } catch (err: any) {
-      alert(err.message);
+      alert("Bilietas sėkmingai pažymėtas!");
+      setTicketId("");
+      setVehicleCode("");
+    } catch (err) {
+      console.error(err);
+      setError("Nepavyko pažymėti bilieto.");
     }
   };
+
+  const handleSignOut = () => {
+    signOut();
+    navigate("/login");
+  };
+
+  if (loading) return <div className="p-6 text-center">Kraunama...</div>;
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6">
-      {/* header like VehiclePage */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-left">Bilietai</h1>
-        <div className="space-x-2">
-          <button
-            onClick={loadTickets}
-            className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-md text-sm"
-          >
-            Atnaujinti
-          </button>
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-800">Mano bilietai</h1>
+        <div className="space-x-3">
           <Link
             to="/routes"
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm"
+            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md transition duration-200"
           >
             Maršrutai
           </Link>
+          <button
+            onClick={handleSignOut}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition duration-200"
+          >
+            Atsijungti
+          </button>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-[1.3fr_0.7fr]">
-        {/* LEFT: tickets list */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b">
-            <h2 className="text-lg font-semibold">Visi bilietai</h2>
-            <button
-              onClick={loadTickets}
-              className="text-sm bg-slate-800 text-white px-3 py-1 rounded-md"
+      {/* Buy Ticket Form */}
+      <div className="bg-white shadow-md rounded-lg p-6 space-y-4">
+        <h2 className="text-xl font-semibold">Pirkti bilietą</h2>
+        <form onSubmit={handleBuyTicket} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Nuolaida
+            </label>
+            <select
+              value={selectedDiscount}
+              onChange={(e) => setSelectedDiscount(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
             >
-              Atnaujinti
-            </button>
-          </div>
-          {loading ? (
-            <p className="p-6 text-sm text-slate-500">Kraunama...</p>
-          ) : error ? (
-            <p className="p-6 text-sm text-red-500">{error}</p>
-          ) : tickets.length === 0 ? (
-            <p className="p-6 text-sm text-slate-500">Nėra bilietų.</p>
-          ) : (
-            <ul className="divide-y">
-              {tickets.map((t) => (
-                <li key={t.id} className="px-6 py-4 text-left">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-mono text-sm text-slate-800">{t.id}</span>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        t.statusas === 2
-                          ? "bg-green-100 text-green-700"
-                          : t.statusas === 1
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {statusLabels[t.statusas] ?? t.statusas}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500">
-                    Naudotojas: {t.naudotojas ?? "—"}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Pirkta: {new Date(t.pirkimoData).toLocaleString()}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Aktyvuota:{" "}
-                    {t.aktyvavimoData
-                      ? new Date(t.aktyvavimoData).toLocaleString()
-                      : "neaktyvuota"}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Transporto priemonė: {t.transportoPriemonesKodas ?? "—"}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Kaina: €{t.galutineKaina?.toFixed(2)}
-                    {t.nuolaidaId ? ` (nuolaida ${t.nuolaidaId})` : ""}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* RIGHT: forms */}
-        <div className="space-y-6">
-          {/* buy */}
-          <div className="bg-white rounded-lg shadow p-4 space-y-3">
-            <h3 className="font-semibold">Pirkti bilietą</h3>
-            <form onSubmit={handleBuy} className="space-y-3">
-              <div>
-                <label className="block text-sm mb-1">El. paštas (nebūtina)</label>
-                <input
-                  className="w-full border rounded px-2 py-1 text-sm"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="jonas@example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Nuolaida</label>
-                <select
-                  className="w-full border rounded px-2 py-1 text-sm"
-                  value={selectedDiscount}
-                  onChange={(e) => setSelectedDiscount(e.target.value)}
-                >
-                  {DISCOUNT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Apmokėjimo būdas</label>
-                <div className="flex gap-2">
-                  {PAYMENT_METHODS.map((pm) => (
-                    <button
-                      key={pm.value}
-                      type="button"
-                      onClick={() => setPaymentMethod(pm.value)}
-                      className={`flex-1 text-sm px-2 py-1 border rounded-md ${
-                        paymentMethod === pm.value
-                          ? "bg-blue-50 border-blue-500 text-blue-700"
-                          : "bg-white"
-                      }`}
-                    >
-                      {pm.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="bg-green-600 text-white text-sm px-3 py-1 rounded-md"
-              >
-                Pirkti
-              </button>
-            </form>
+              <option value="0">Be nuolaidos</option>
+              <option value="1">Moksleivio (50%)</option>
+              <option value="2">Studento (30%)</option>
+              <option value="3">Senjoro (20%)</option>
+            </select>
           </div>
 
-          {/* mark (pažymėti) */}
-          <div className="bg-white rounded-lg shadow p-4 space-y-3">
-            <h3 className="font-semibold">Pažymėti bilietą</h3>
-            <form onSubmit={handleMark} className="space-y-3">
-              <div>
-                <label className="block text-sm mb-1">Bilieto ID</label>
-                <input
-                    className="w-full border rounded px-2 py-1 text-sm"
-                    value={markId}
-                    onChange={(e) => setMarkId(e.target.value)}
-                    required
-                    placeholder="Įklijuok bilieto ID"
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Transporto priemonės kodas</label>
-                <input
-                    className="w-full border rounded px-2 py-1 text-sm"
-                    value={markVehicle}
-                    onChange={(e) => setMarkVehicle(e.target.value)}
-                    placeholder="BUS-24"
-                />
-              </div>
-              <button
-                type="submit"
-                className="bg-emerald-600 text-white text-sm px-3 py-1 rounded-md"
-              >
-                Pažymėti
-              </button>
-            </form>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Mokėjimo būdas
+            </label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="kortele">Banko kortele</option>
+              <option value="paypal">PayPal</option>
+              <option value="grynais">Grynais</option>
+            </select>
           </div>
 
-          {/* we REMOVED the validate/check block here */}
-        </div>
+          <button
+            type="submit"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition duration-200"
+          >
+            Pirkti bilietą
+          </button>
+        </form>
       </div>
+
+      {/* Mark Ticket Form */}
+      <div className="bg-white shadow-md rounded-lg p-6 space-y-4">
+        <h2 className="text-xl font-semibold">Pažymėti bilietą</h2>
+        <form onSubmit={handleMarkTicket} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Bilieto ID
+            </label>
+            <input
+              type="text"
+              value={ticketId}
+              onChange={(e) => setTicketId(e.target.value)}
+              className="w-full border rounded-md px-3 py-2"
+              placeholder="Įveskite bilieto ID"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Transporto priemonės kodas
+            </label>
+            <input
+              type="text"
+              value={vehicleCode}
+              onChange={(e) => setVehicleCode(e.target.value)}
+              className="w-full border rounded-md px-3 py-2"
+              placeholder="Pvz. ABC123"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md transition duration-200"
+          >
+            Pažymėti
+          </button>
+        </form>
+      </div>
+
+      {/* Ticket List */}
+      <div className="bg-white shadow-md rounded-lg p-6">
+        <h2 className="text-xl font-semibold mb-4">Turimi bilietai</h2>
+        {tickets.length === 0 ? (
+          <p className="text-gray-600">Neturite jokių bilietų.</p>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  ID
+                </th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  Kaina
+                </th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  Statusas
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {tickets.map((t) => (
+                <tr key={t.id}>
+                  <td className="px-4 py-2">{t.id}</td>
+                  <td className="px-4 py-2">{t.galutineKaina} €</td>
+                  <td className="px-4 py-2">
+                    {t.statusas === 1 ? "Aktyvus" : "Neaktyvus"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 p-3 rounded">
+          {error}
+        </div>
+      )}
     </div>
   );
 };
