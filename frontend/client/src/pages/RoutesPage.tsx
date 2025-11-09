@@ -1,21 +1,33 @@
 import React, { useEffect, useState } from "react";
-import { Route, routesService } from "../services/RoutesService";
 import { useNavigate } from "react-router-dom";
+import { Route, Stop, routesService } from "../services/RoutesService";
 
 const RoutesPage: React.FC = () => {
+  const navigate = useNavigate();
   const [routes, setRoutes] = useState<Route[]>([]);
+  const [stops, setStops] = useState<Stop[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Search and filter state
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFromStop, setSelectedFromStop] = useState("");
+  const [selectedToStop, setSelectedToStop] = useState("");
+  const [filteredRoutes, setFilteredRoutes] = useState<Route[]>([]);
+  
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
-  const navigate = useNavigate();
 
-  const loadRoutes = async (search?: string) => {
+  const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await routesService.getAll(search);
-      setRoutes(data);
+      const [routesData, stopsData] = await Promise.all([
+        routesService.getAll(),
+        routesService.getAllStops()
+      ]);
+      setRoutes(routesData);
+      setStops(stopsData);
+      setFilteredRoutes(routesData);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -24,13 +36,44 @@ const RoutesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadRoutes();
+    loadData();
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadRoutes(searchTerm);
-  };
+  // Filter routes based on search and stop selection
+  useEffect(() => {
+    let filtered = [...routes];
+
+    // Text search
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (route) =>
+          route.numeris.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          route.pavadinimas.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          route.pradziosStotele.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          route.pabaigosStotele.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Filter by "from" stop
+    if (selectedFromStop) {
+      filtered = filtered.filter(
+        (route) =>
+          route.pradziosStotele === selectedFromStop ||
+          route.stoteles?.some((s) => s.stotelesPavadinimas === selectedFromStop)
+      );
+    }
+
+    // Filter by "to" stop
+    if (selectedToStop) {
+      filtered = filtered.filter(
+        (route) =>
+          route.pabaigosStotele === selectedToStop ||
+          route.stoteles?.some((s) => s.stotelesPavadinimas === selectedToStop)
+      );
+    }
+
+    setFilteredRoutes(filtered);
+  }, [searchTerm, selectedFromStop, selectedToStop, routes]);
 
   const handleViewDetails = async (numeris: string) => {
     try {
@@ -39,6 +82,12 @@ const RoutesPage: React.FC = () => {
     } catch (err: any) {
       alert(err.message);
     }
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setSelectedFromStop("");
+    setSelectedToStop("");
   };
 
   return (
@@ -55,41 +104,71 @@ const RoutesPage: React.FC = () => {
           <h1 className="text-2xl font-bold">Maršrutai</h1>
         </div>
         <button
-          onClick={() => loadRoutes()}
+          onClick={loadData}
           className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-md text-sm"
         >
           Atnaujinti
         </button>
       </div>
 
-      {/* Search */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <form onSubmit={handleSearch} className="flex gap-2">
+      {/* Search and Filter Section */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6 space-y-4">
+        <h2 className="text-lg font-semibold mb-4">Paieška ir filtravimas</h2>
+        
+        {/* Text Search */}
+        <div>
+          <label className="block text-sm font-medium mb-2">Ieškoti pagal pavadinimą ar numerį</label>
           <input
-            className="flex-1 border rounded px-3 py-2 text-sm"
-            placeholder="Ieškoti maršruto (numeris, pavadinimas, stotelė...)"
+            className="w-full border rounded px-3 py-2 text-sm"
+            placeholder="Įveskite maršruto numerį arba pavadinimą..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-          >
-            Ieškoti
-          </button>
-          {searchTerm && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchTerm("");
-                loadRoutes();
-              }}
-              className="bg-slate-200 text-slate-700 px-4 py-2 rounded-md hover:bg-slate-300"
+        </div>
+
+        {/* Stop Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Iš stotelės</label>
+            <select
+              className="w-full border rounded px-3 py-2 text-sm"
+              value={selectedFromStop}
+              onChange={(e) => setSelectedFromStop(e.target.value)}
             >
-              Valyti
-            </button>
-          )}
-        </form>
+              <option value="">Visos stotelės</option>
+              {stops.map((stop) => (
+                <option key={stop.pavadinimas} value={stop.pavadinimas}>
+                  {stop.pavadinimas}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Į stotelę</label>
+            <select
+              className="w-full border rounded px-3 py-2 text-sm"
+              value={selectedToStop}
+              onChange={(e) => setSelectedToStop(e.target.value)}
+            >
+              <option value="">Visos stotelės</option>
+              {stops.map((stop) => (
+                <option key={stop.pavadinimas} value={stop.pavadinimas}>
+                  {stop.pavadinimas}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Clear Filters Button */}
+        {(searchTerm || selectedFromStop || selectedToStop) && (
+          <button
+            onClick={handleClearFilters}
+            className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-md text-sm"
+          >
+            Išvalyti filtrus
+          </button>
+        )}
       </div>
 
       {/* Routes List */}
@@ -98,18 +177,20 @@ const RoutesPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="px-6 py-4 border-b">
             <h2 className="text-lg font-semibold">
-              Maršrutai ({routes.length})
+              Rasti maršrutai ({filteredRoutes.length})
             </h2>
           </div>
           {loading ? (
             <p className="p-6 text-sm text-slate-500">Kraunama...</p>
           ) : error ? (
             <p className="p-6 text-sm text-red-500">{error}</p>
-          ) : routes.length === 0 ? (
-            <p className="p-6 text-sm text-slate-500">Maršrutų nerasta.</p>
+          ) : filteredRoutes.length === 0 ? (
+            <p className="p-6 text-sm text-slate-500">
+              Maršrutų nerasta. Pabandykite pakeisti paieškos kriterijus.
+            </p>
           ) : (
             <ul className="divide-y max-h-[600px] overflow-y-auto">
-              {routes.map((route) => (
+              {filteredRoutes.map((route) => (
                 <li key={route.numeris} className="px-6 py-4 hover:bg-slate-50">
                   <div className="flex justify-between items-start mb-2">
                     <div>
@@ -137,6 +218,11 @@ const RoutesPage: React.FC = () => {
                     <p className="text-xs text-slate-500">
                       <span className="font-medium">Atstumas:</span>{" "}
                       {route.bendrasAtstumas.toFixed(1)} km
+                    </p>
+                  )}
+                  {route.stoteles && route.stoteles.length > 0 && (
+                    <p className="text-xs text-slate-500">
+                      <span className="font-medium">Stotelės:</span> {route.stoteles.length}
                     </p>
                   )}
                 </li>
@@ -200,9 +286,9 @@ const RoutesPage: React.FC = () => {
                           </span>
                           <div className="flex-1">
                             <p className="font-medium">{stop.stotelesPavadinimas}</p>
-                            {stop.atstumasNuoPradzios !== null && (
+                            {stop.atstumasNuoPradzios !== null && stop.atstumasNuoPradzios !== undefined && (
                               <p className="text-xs text-slate-500">
-                                {stop.atstumasNuoPradzios?.toFixed(1)} km nuo pradžios
+                                {stop.atstumasNuoPradzios.toFixed(1)} km nuo pradžios
                               </p>
                             )}
                           </div>
