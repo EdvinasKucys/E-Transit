@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const AdminPage: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -97,6 +98,28 @@ const AdminPage: React.FC = () => {
       </header>
 
       <div className="container mx-auto px-4 py-8 space-y-6">
+        {/* marsrutai */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-xl font-bold mb-4">Valdymo skydeliai</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link
+              to="/admin/routes"
+              className="bg-indigo-600 text-white px-6 py-4 rounded-lg hover:bg-indigo-700 transition text-center font-medium"
+            >
+              Maršrutų valdymas
+            </Link>
+            <button
+              className="bg-green-600 text-white px-6 py-4 rounded-lg hover:bg-green-700 transition font-medium"
+            >
+              Bilietų valdymas
+            </button>
+            <button
+              className="bg-blue-600 text-white px-6 py-4 rounded-lg hover:bg-blue-700 transition font-medium"
+            >
+              Transporto priemonės
+            </button>
+          </div>
+        </div>
         {/* nuolaidos */}
         <div className="bg-white shadow rounded-lg">
           <div className="flex justify-between items-center px-6 py-4 border-b">

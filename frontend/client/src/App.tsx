@@ -6,6 +6,8 @@ import PassengerPage from "./pages/PassengerPage";
 import AdminPage from "./pages/AdminPage";
 import InspectorPage from "./pages/InspectorPage";
 import VehiclePage from "./pages/VehiclePage";
+import RoutesPage from "./pages/RoutesPage";             
+import AdminRoutesPage from "./pages/AdminRoutesPage"; 
 
 function App() {
   return (
@@ -21,6 +23,9 @@ function App() {
           <Route path="/inspector" element={<InspectorPage />} />
           <Route path="/driver" element={<VehiclePage />} />
 
+          {/* Routes pages */}
+          <Route path="/routes" element={<RoutesPage />} />
+          <Route path="/admin/routes" element={<AdminRoutesPage />} />
           {/* Fallback */}
           <Route path="*" element={<LoginPage />} />
         </Routes>
