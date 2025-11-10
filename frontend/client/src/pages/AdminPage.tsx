@@ -97,27 +97,54 @@ const AdminPage: React.FC = () => {
         </button>
       </header>
 
-      <div className="container mx-auto px-4 py-8 space-y-6">
-        {/* marsrutai */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-4">Valdymo skydeliai</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="container mx-auto px-4 py-10 space-y-8">
+        {/* Routes Management Section */}
+        <div className="bg-white shadow-md rounded-2xl p-8">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-800 text-center">
+            Maršrutų valdymas
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
             <Link
               to="/admin/routes"
-              className="bg-indigo-600 text-white px-6 py-4 rounded-lg hover:bg-indigo-700 transition text-center font-medium"
+              className="bg-indigo-600 text-white px-6 py-4 rounded-xl hover:bg-indigo-700 transition-colors text-center font-medium shadow-sm w-full"
             >
               Maršrutų valdymas
             </Link>
+            <Link
+              to="/admin/routes/optimize"
+              className="bg-purple-600 text-white px-6 py-4 rounded-xl hover:bg-purple-700 transition-colors text-center font-medium shadow-sm w-full"
+            >
+              Maršrutų optimizavimas
+            </Link>
+            <Link
+              to="/admin/routes/stats"
+              className="bg-blue-600 text-white px-6 py-4 rounded-xl hover:bg-blue-700 transition-colors text-center font-medium shadow-sm w-full"
+            >
+              Statistika ir ataskaitos
+            </Link>
+          </div>
+        </div>
+
+        {/* Other Management Sections */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-xl font-bold mb-4">Kiti valdymo skydeliai</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               className="bg-green-600 text-white px-6 py-4 rounded-lg hover:bg-green-700 transition font-medium"
             >
               Bilietų valdymas
             </button>
             <button
-              className="bg-blue-600 text-white px-6 py-4 rounded-lg hover:bg-blue-700 transition font-medium"
+              className="bg-orange-600 text-white px-6 py-4 rounded-lg hover:bg-orange-700 transition font-medium"
             >
               Transporto priemonės
             </button>
+            <Link
+              to="/admin/routes/schedules"
+              className="bg-pink-600 text-white px-6 py-4 rounded-lg hover:bg-pink-700 transition font-medium text-center"
+            >
+              Tvarkaraščiai
+            </Link>
           </div>
         </div>
         {/* nuolaidos */}

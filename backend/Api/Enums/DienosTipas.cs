@@ -1,9 +1,9 @@
-// namespace Api.Enums
-// {
-//     public enum DienosTipas
-//     {
-//         DarboDiena = 1,
-//         Savaitgalis = 2,
-//         SventineDiena = 3
-//     }
-// }
+namespace Api.Enums
+{
+    public enum DienosTipas
+    {
+        DarboDiena = 0,
+        Savaitgalis = 1,
+        SventineDiena = 2
+    }
+}

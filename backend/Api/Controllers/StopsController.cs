@@ -1,6 +1,7 @@
 using Api.Data;
 using Api.DTOs;
 using Api.Models;
+using Api.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -33,7 +34,7 @@ namespace Api.Controllers
                         Savivaldybe = s.Savivaldybe,
                         KoordinatesX = s.KoordinatesX,
                         KoordinatesY = s.KoordinatesY,
-                        Tipas = s.Tipas
+                        Tipas = s.Tipas.ToString() // Convert enum to string
                     })
                     .ToListAsync();
 
@@ -60,7 +61,7 @@ namespace Api.Controllers
                         Savivaldybe = s.Savivaldybe,
                         KoordinatesX = s.KoordinatesX,
                         KoordinatesY = s.KoordinatesY,
-                        Tipas = s.Tipas
+                        Tipas = s.Tipas.ToString() // Convert enum to string
                     })
                     .FirstOrDefaultAsync();
 
@@ -85,13 +86,19 @@ namespace Api.Controllers
                 if (await _context.Stoteles.AnyAsync(s => s.Pavadinimas == dto.Pavadinimas))
                     return Conflict($"Stop '{dto.Pavadinimas}' already exists");
 
+                // Parse the tipas string to enum
+                if (!Enum.TryParse<StotelesTipas>(dto.Tipas, out var tipas))
+                {
+                    return BadRequest($"Invalid stop type '{dto.Tipas}'. Valid values are: Pradzios, Tarpine, Pabaigos");
+                }
+
                 var stop = new Stotele
                 {
                     Pavadinimas = dto.Pavadinimas,
                     Savivaldybe = dto.Savivaldybe,
                     KoordinatesX = dto.KoordinatesX,
                     KoordinatesY = dto.KoordinatesY,
-                    Tipas = dto.Tipas
+                    Tipas = tipas
                 };
 
                 _context.Stoteles.Add(stop);
@@ -103,12 +110,44 @@ namespace Api.Controllers
                     Savivaldybe = stop.Savivaldybe,
                     KoordinatesX = stop.KoordinatesX,
                     KoordinatesY = stop.KoordinatesY,
-                    Tipas = stop.Tipas
+                    Tipas = stop.Tipas.ToString()
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating stop");
+                return StatusCode(500, $"Error: {ex.Message}");
+            }
+        }
+
+        // PUT: api/stoteles/{pavadinimas}
+        [HttpPut("{pavadinimas}")]
+        public async Task<IActionResult> UpdateStop(string pavadinimas, UpdateStoteleDto dto)
+        {
+            try
+            {
+                var stop = await _context.Stoteles.FindAsync(pavadinimas);
+
+                if (stop == null)
+                    return NotFound($"Stop '{pavadinimas}' not found");
+
+                // Parse the tipas string to enum
+                if (!Enum.TryParse<StotelesTipas>(dto.Tipas, out var tipas))
+                {
+                    return BadRequest($"Invalid stop type '{dto.Tipas}'. Valid values are: Pradzios, Tarpine, Pabaigos");
+                }
+
+                stop.Savivaldybe = dto.Savivaldybe;
+                stop.KoordinatesX = dto.KoordinatesX;
+                stop.KoordinatesY = dto.KoordinatesY;
+                stop.Tipas = tipas;
+
+                await _context.SaveChangesAsync();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating stop {Pavadinimas}", pavadinimas);
                 return StatusCode(500, $"Error: {ex.Message}");
             }
         }

@@ -15,6 +15,14 @@ namespace Api.DTOs
         public string Savivaldybe { get; set; } = string.Empty;
         public float KoordinatesX { get; set; }
         public float KoordinatesY { get; set; }
-        public string Tipas { get; set; } = string.Empty;
+        public string Tipas { get; set; } = string.Empty; // "Pradzios", "Tarpine", or "Pabaigos"
+    }
+
+        public class UpdateStoteleDto
+    {
+        public string Savivaldybe { get; set; } = string.Empty;
+        public float KoordinatesX { get; set; }
+        public float KoordinatesY { get; set; }
+        public string Tipas { get; set; } = string.Empty; // "Pradzios", "Tarpine", or "Pabaigos"
     }
 }

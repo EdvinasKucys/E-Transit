@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Api.Enums;
 
 namespace Api.Models
 {
@@ -30,7 +31,7 @@ namespace Api.Models
         [Required]
         [MaxLength(20)]
         [Column("dienos_tipas")]
-        public string DienosTipas { get; set; } = string.Empty; // Darbo_diena, Savaitgalis, Sventine_diena
+        public DienosTipas DienosTipas { get; set; } // Darbo_diena, Savaitgalis, Sventine_diena
 
         [MaxLength(20)]
         [Column("transporto_priemones_kodas")]

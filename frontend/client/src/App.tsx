@@ -7,7 +7,10 @@ import AdminPage from "./pages/AdminPage";
 import InspectorPage from "./pages/InspectorPage";
 import VehiclePage from "./pages/VehiclePage";
 import RoutesPage from "./pages/RoutesPage";             
-import AdminRoutesPage from "./pages/AdminRoutesPage"; 
+import AdminRoutesPage from "./pages/AdminRoutesPage";
+import RouteOptimizationPage from "./pages/RouteOptimizationPage";
+import RouteStatsPage from "./pages/RouteStatsPage";
+import SchedulePage from './pages/SchedulePage';
 
 function App() {
   return (
@@ -26,6 +29,11 @@ function App() {
           {/* Routes pages */}
           <Route path="/routes" element={<RoutesPage />} />
           <Route path="/admin/routes" element={<AdminRoutesPage />} />
+          <Route path="/admin/routes/optimize" element={<RouteOptimizationPage />} />
+          <Route path="/admin/routes/stats" element={<RouteStatsPage />} />
+          <Route path="/admin/routes/schedules" element={<SchedulePage />} />
+          
+
           {/* Fallback */}
           <Route path="*" element={<LoginPage />} />
         </Routes>
