@@ -21,9 +21,46 @@ builder.Services.AddCors(options =>
             .AllowCredentials());
 });
 
-// Configure PostgreSQL
+// Load .env file if present and set environment variables
+try
+{
+    var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+    if (File.Exists(envPath))
+    {
+        var lines = File.ReadAllLines(envPath);
+        foreach (var raw in lines)
+        {
+            var line = raw.Trim();
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+            var idx = line.IndexOf('=');
+            if (idx <= 0) continue;
+            var key = line[..idx].Trim();
+            var value = line[(idx + 1)..].Trim();
+            Environment.SetEnvironmentVariable(key, value);
+        }
+    }
+}
+catch
+{
+    // ignore .env parsing errors, will fallback to appsettings.json
+}
+
+// Build connection string from environment variables if available
+string? dbHost = Environment.GetEnvironmentVariable("DB_HOST");
+string? dbPort = Environment.GetEnvironmentVariable("DB_PORT");
+string? dbName = Environment.GetEnvironmentVariable("DB_NAME");
+string? dbUser = Environment.GetEnvironmentVariable("DB_USER");
+string? dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+
+string? envConnection = null;
+if (!string.IsNullOrWhiteSpace(dbHost) && !string.IsNullOrWhiteSpace(dbName) && !string.IsNullOrWhiteSpace(dbUser))
+{
+    envConnection = $"Host={dbHost};Port={(string.IsNullOrWhiteSpace(dbPort) ? "5432" : dbPort)};Database={dbName};Username={dbUser};Password={dbPassword};Ssl Mode=Disable";
+}
+
+// Configure PostgreSQL using env connection string if provided, else fallback to appsettings.json
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(envConnection ?? builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
