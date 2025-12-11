@@ -23,6 +23,8 @@ const AdminPage: React.FC = () => {
     elPastas: "",
     gimimoData: "",
     miestas: "",
+    // Driver-specific fields
+    vairavimosStazas: "",
   });
   const [workerLoading, setWorkerLoading] = useState(false);
   const [workerError, setWorkerError] = useState<string | null>(null);
@@ -138,7 +140,7 @@ const AdminPage: React.FC = () => {
 
     setWorkerLoading(true);
     try {
-      const response = await adminService.createWorker({
+      const workerPayload: any = {
         vardas: workerForm.vardas,
         pavarde: workerForm.pavarde,
         slapyvardis: workerForm.slapyvardis,
@@ -147,7 +149,16 @@ const AdminPage: React.FC = () => {
         elPastas: workerForm.elPastas || undefined,
         gimimoData: workerForm.gimimoData || undefined,
         miestas: workerForm.miestas || undefined,
-      });
+      };
+
+      // Add driver-specific fields if role is Vairuotojas
+      if (workerForm.role === "Vairuotojas") {
+        workerPayload.vairavimosStazas = workerForm.vairavimosStazas
+          ? parseFloat(workerForm.vairavimosStazas)
+          : undefined;
+      }
+
+      const response = await adminService.createWorker(workerPayload);
 
       setWorkerSuccess(
         `Darbuotojo paskyra sukurta sėkmingai! Naudotojo vardas: ${response.slapyvardis}`
@@ -163,6 +174,7 @@ const AdminPage: React.FC = () => {
         elPastas: "",
         gimimoData: "",
         miestas: "",
+        vairavimosStazas: "",
       });
     } catch (err) {
       setWorkerError(err instanceof Error ? err.message : "Nepavyko sukurti paskyros");
@@ -359,11 +371,12 @@ const AdminPage: React.FC = () => {
                 >
                   Bilietų valdymas
                 </button>
-                <button
-                  className="bg-orange-600 text-white px-6 py-4 rounded-lg hover:bg-orange-700 transition font-medium"
+                <Link
+                  to="/vehicles"
+                  className="bg-orange-600 text-white px-6 py-4 rounded-lg hover:bg-orange-700 transition font-medium text-center"
                 >
                   Transporto priemonės
-                </button>
+                </Link>
                 <Link
                   to="/admin/routes/schedules"
                   className="bg-pink-600 text-white px-6 py-4 rounded-lg hover:bg-pink-700 transition font-medium text-center"
@@ -563,6 +576,30 @@ const AdminPage: React.FC = () => {
                     className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-100"
                   />
                 </div>
+
+                {/* Driver-specific fields */}
+                {workerForm.role === "Vairuotojas" && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                    <p className="text-sm font-medium text-blue-900 mb-3">Vairuotojo duomenys</p>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Vairavimo stažas (metais)
+                      </label>
+                      <input
+                        type="number"
+                        name="vairavimosStazas"
+                        value={workerForm.vairavimosStazas}
+                        onChange={handleWorkerFormChange}
+                        disabled={workerLoading}
+                        className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-100"
+                        placeholder="0"
+                        step="0.1"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <button
                   type="submit"

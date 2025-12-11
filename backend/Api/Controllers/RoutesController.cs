@@ -26,14 +26,12 @@ namespace Api.Controllers
         {
             try
             {
-                var query = _context.Marsrutai
-                    .Include(m => m.MarstrutoStoteles.OrderBy(ms => ms.EilesNr))
-                    .AsQueryable();
+                var query = _context.Marsrutai.AsQueryable();
 
                 if (!string.IsNullOrWhiteSpace(search))
                 {
                     query = query.Where(m =>
-                        m.Numeris.Contains(search) ||
+                        m.Numeris.ToString().Contains(search) ||
                         m.Pavadinimas.Contains(search) ||
                         m.PradziosStotele.Contains(search) ||
                         m.PabaigosStotele.Contains(search));
@@ -74,12 +72,11 @@ namespace Api.Controllers
 
         // GET: api/marsrutai/{numeris}
         [HttpGet("{numeris}")]
-        public async Task<ActionResult<MarsrutasDto>> GetRoute(string numeris)
+        public async Task<ActionResult<MarsrutasDto>> GetRoute(int numeris)
         {
             try
             {
                 var route = await _context.Marsrutai
-                    .Include(m => m.MarstrutoStoteles.OrderBy(ms => ms.EilesNr))
                     .Where(m => m.Numeris == numeris)
                     .Select(m => new MarsrutasDto
                     {
@@ -190,7 +187,7 @@ namespace Api.Controllers
 
         // PUT: api/marsrutai/{numeris}
         [HttpPut("{numeris}")]
-        public async Task<IActionResult> UpdateRoute(string numeris, UpdateMarsrutasDto dto)
+        public async Task<IActionResult> UpdateRoute(int numeris, UpdateMarsrutasDto dto)
         {
             try
             {
@@ -252,7 +249,7 @@ namespace Api.Controllers
 
         // DELETE: api/marsrutai/{numeris}
         [HttpDelete("{numeris}")]
-        public async Task<IActionResult> DeleteRoute(string numeris)
+        public async Task<IActionResult> DeleteRoute(int numeris)
         {
             try
             {

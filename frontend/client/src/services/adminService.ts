@@ -9,6 +9,7 @@ export interface CreateWorkerRequest {
   elPastas?: string;
   gimimoData?: string;
   miestas?: string;
+  vairavimosStazas?: number;
 }
 
 export interface CreateWorkerResponse {
@@ -47,6 +48,7 @@ class AdminService {
           elPastas: data.elPastas && data.elPastas.trim() ? data.elPastas : null,
           gimimoData: data.gimimoData ? new Date(data.gimimoData).toISOString() : null,
           miestas: data.miestas && data.miestas.trim() ? data.miestas : null,
+          vairavimosStazas: data.vairavimosStazas,
         }),
       });
 

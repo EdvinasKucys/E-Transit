@@ -19,7 +19,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -69,7 +69,7 @@ export default function RegisterPage() {
     }
 
     try {
-      await register({
+      const registerPayload: any = {
         vardas: formData.vardas,
         pavarde: formData.pavarde,
         slapyvardis: formData.slapyvardis,
@@ -77,7 +77,10 @@ export default function RegisterPage() {
         elPastas: formData.elPastas || undefined,
         gimimoData: formData.gimimoData || undefined,
         miestas: formData.miestas || undefined,
-      });
+        role: "Keleivis",
+      };
+
+      await register(registerPayload);
 
       navigate("/passenger", { replace: true });
     } catch (err) {

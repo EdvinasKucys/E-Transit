@@ -25,7 +25,13 @@ namespace Api.DTOs
         public string? ElPastas { get; set; }
         public string Slapyvardis { get; set; } = string.Empty;
         public string Slaptazodis { get; set; } = string.Empty;
-        public string? Role { get; set; } // For worker creation
+        public string? Role { get; set; } // For worker creation (Vairuotojas, Administratorius, Kontrolierius)
+        
+        // Driver-specific fields (only used when Role = "Vairuotojas")
+        public string? PastoKodas { get; set; }
+        public string? Adresas { get; set; }
+        public string? AsmenKodas { get; set; }
+        public float? VairavimosStazas { get; set; }
     }
 
     public class RegisterResponse

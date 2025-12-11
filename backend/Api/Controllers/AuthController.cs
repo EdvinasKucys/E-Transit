@@ -57,6 +57,48 @@ namespace Api.Controllers
         }
 
         /// <summary>
+        /// Get list of driver accounts (role = Vairuotojas and exist in Vairuotojas table)
+        /// </summary>
+        [HttpGet("drivers")]
+        public async Task<ActionResult<IEnumerable<WorkerDto>>> GetDrivers()
+        {
+            try
+            {
+                // Require admin role
+                if (!Request.Headers.TryGetValue("X-User-Role", out var roleHeader) || roleHeader != "Administratorius")
+                {
+                    return StatusCode(403, new { message = "Admin authorization required" });
+                }
+
+                // Get drivers that have entries in the Vairuotojas table
+                var drivers = await _context.Naudotojai
+                    .Where(n => n.Role != null && n.Role == "Vairuotojas")
+                    .Join(
+                        _context.Vairuotojai,
+                        n => n.IdNaudotojas,
+                        v => v.IdNaudotojas,
+                        (n, v) => new WorkerDto
+                        {
+                            IdNaudotojas = n.IdNaudotojas,
+                            Vardas = n.Vardas ?? string.Empty,
+                            Pavarde = n.Pavarde ?? string.Empty,
+                            Slapyvardis = n.Slapyvardis ?? string.Empty,
+                            Role = n.Role ?? string.Empty,
+                            ElPastas = n.ElPastas,
+                        }
+                    )
+                    .ToListAsync();
+
+                return Ok(drivers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Get drivers error: {ex.Message}");
+                return StatusCode(500, new { message = "Failed to fetch drivers" });
+            }
+        }
+
+        /// <summary>
         /// Update worker role
         /// </summary>
         [HttpPatch("workers/{id}/role")]
@@ -112,42 +154,101 @@ namespace Api.Controllers
         [HttpDelete("workers/{id}")]
         public async Task<ActionResult> DeleteWorker(int id)
         {
+            Console.WriteLine($"=== DELETE WORKER ENDPOINT CALLED for ID: {id} ===");
+            
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 // Simple authorization: require admin role in header
                 if (!Request.Headers.TryGetValue("X-User-Role", out var roleHeader) || roleHeader != "Administratorius")
                 {
+                    Console.WriteLine("Authorization failed - not admin");
                     return StatusCode(403, new { message = "Admin authorization required" });
                 }
+                
                 var user = await _context.Naudotojai.FirstOrDefaultAsync(n => n.IdNaudotojas == id);
                 if (user == null)
                 {
+                    Console.WriteLine($"User {id} not found");
                     return NotFound(new { message = "User not found" });
                 }
 
                 if (user.Role == "Keleivis")
                 {
+                    Console.WriteLine($"Cannot delete passenger {id} via worker endpoint");
                     return BadRequest(new { message = "Cannot delete passenger via this endpoint" });
                 }
 
+                Console.WriteLine($"Deleting worker: {user.Slapyvardis} (Role: {user.Role})");
+
+                // If the worker is a driver, unassign them from any vehicles and delete Vairuotojas entry
+                if (user.Role == "Vairuotojas")
+                {
+                    // Unassign from vehicles first
+                    var assignedVehicles = await _context.TransportoPriemones
+                        .Where(v => v.FkVairuotojasIdNaudotojas == id)
+                        .ToListAsync();
+
+                    if (assignedVehicles.Any())
+                    {
+                        Console.WriteLine($"Unassigning driver from {assignedVehicles.Count} vehicle(s)");
+                        foreach (var vehicle in assignedVehicles)
+                        {
+                            vehicle.FkVairuotojasIdNaudotojas = null;
+                            Console.WriteLine($"Unassigned driver from vehicle {vehicle.ValstybiniaiNum}");
+                        }
+                        await _context.SaveChangesAsync();
+                    }
+
+                    // Delete Vairuotojas entry
+                    var vairuotojas = await _context.Vairuotojai.FirstOrDefaultAsync(v => v.IdNaudotojas == id);
+                    if (vairuotojas != null)
+                    {
+                        Console.WriteLine($"Deleting Vairuotojas entry for user {id}");
+                        _context.Vairuotojai.Remove(vairuotojas);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
+                // Delete Darbuotojas entry (all workers have this)
+                var darbuotojas = await _context.Darbuotojai.FirstOrDefaultAsync(d => d.IdNaudotojas == id);
+                if (darbuotojas != null)
+                {
+                    Console.WriteLine($"Deleting Darbuotojas entry for user {id}");
+                    _context.Darbuotojai.Remove(darbuotojas);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Finally delete Naudotojas
+                Console.WriteLine($"Deleting Naudotojas entry for user {id}");
                 _context.Naudotojai.Remove(user);
                 await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                Console.WriteLine($"=== WORKER {id} DELETED SUCCESSFULLY ===");
 
                 return Ok(new { message = "Worker deleted" });
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Delete worker error: {ex.Message}");
-                return StatusCode(500, new { message = "Failed to delete worker" });
+                await transaction.RollbackAsync();
+                Console.WriteLine("=== DELETE WORKER ERROR ===");
+                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new { message = $"Failed to delete worker: {ex.Message}" });
             }
         }
 
         /// <summary>
-        /// Register a new passenger (Keleivis)
+        /// Register a new user (passenger or worker)
         /// </summary>
         [HttpPost("register")]
         public async Task<ActionResult<RegisterResponse>> Register([FromBody] RegisterRequest request)
         {
+            Console.WriteLine("=== REGISTER ENDPOINT CALLED ===");
+            Console.WriteLine($"Username: {request.Slapyvardis}, Role: {request.Role}");
+            
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 // Validate input
@@ -168,6 +269,11 @@ namespace Api.Controllers
                 // Hash password
                 var hashedPassword = HashPassword(request.Slaptazodis);
 
+                // Determine role (default to Keleivis if not specified)
+                var role = string.IsNullOrWhiteSpace(request.Role) ? "Keleivis" : request.Role;
+
+                Console.WriteLine($"Creating user with role: {role}");
+
                 // Create new user
                 var naudotojas = new Naudotojas
                 {
@@ -178,22 +284,71 @@ namespace Api.Controllers
                     ElPastas = request.ElPastas,
                     Slapyvardis = request.Slapyvardis,
                     Slaptazodis = hashedPassword,
-                    Role = "Keleivis"
+                    Role = role
                 };
 
                 _context.Naudotojai.Add(naudotojas);
                 await _context.SaveChangesAsync();
 
-                // Create corresponding Keleivis record
-                var keleivis = new Keleivis
-                {
-                    IdNaudotojas = naudotojas.IdNaudotojas,
-                    IdKorteles = null,
-                    NuolaidosTipas = null
-                };
+                Console.WriteLine($"Created Naudotojas with ID: {naudotojas.IdNaudotojas}");
 
-                _context.Keleivis.Add(keleivis);
-                await _context.SaveChangesAsync();
+                // Create role-specific records
+                if (role == "Keleivis")
+                {
+                    var keleivis = new Keleivis
+                    {
+                        IdNaudotojas = naudotojas.IdNaudotojas,
+                        IdKorteles = null,
+                        NuolaidosTipas = null
+                    };
+                    _context.Keleivis.Add(keleivis);
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"Created Keleivis entry for user {naudotojas.IdNaudotojas}");
+                }
+                else if (role == "Vairuotojas")
+                {
+                    Console.WriteLine($"Creating Darbuotojas entry for driver {naudotojas.IdNaudotojas}");
+                    // Create Darbuotojas entry
+                    var darbuotojas = new Darbuotojas
+                    {
+                        IdNaudotojas = naudotojas.IdNaudotojas,
+                        PastoKodas = request.PastoKodas,
+                        Adresas = request.Adresas,
+                        AsmenKodas = request.AsmenKodas
+                    };
+                    _context.Darbuotojai.Add(darbuotojas);
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"Created Darbuotojas entry for user {naudotojas.IdNaudotojas}");
+
+                    Console.WriteLine($"Creating Vairuotojas entry with stazas: {request.VairavimosStazas}");
+                    // Create Vairuotojas entry
+                    var vairuotojas = new Vairuotojas
+                    {
+                        IdNaudotojas = naudotojas.IdNaudotojas,
+                        VairavimosStazas = request.VairavimosStazas
+                    };
+                    _context.Vairuotojai.Add(vairuotojas);
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"Created Vairuotojas entry for user {naudotojas.IdNaudotojas}");
+                }
+                else if (role == "Administratorius" || role == "Kontrolierius")
+                {
+                    Console.WriteLine($"Creating Darbuotojas entry for {role} {naudotojas.IdNaudotojas}");
+                    // Create Darbuotojas entry for other worker types
+                    var darbuotojas = new Darbuotojas
+                    {
+                        IdNaudotojas = naudotojas.IdNaudotojas,
+                        PastoKodas = request.PastoKodas,
+                        Adresas = request.Adresas,
+                        AsmenKodas = request.AsmenKodas
+                    };
+                    _context.Darbuotojai.Add(darbuotojas);
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"Created Darbuotojas entry for user {naudotojas.IdNaudotojas}");
+                }
+
+                await transaction.CommitAsync();
+                Console.WriteLine("=== REGISTRATION SUCCESSFUL ===");
 
                 var response = new RegisterResponse
                 {
@@ -207,8 +362,15 @@ namespace Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Registration error: {ex.Message}");
-                return StatusCode(500, new { message = "An error occurred during registration" });
+                await transaction.RollbackAsync();
+                Console.WriteLine("=== REGISTRATION ERROR ===");
+                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                return StatusCode(500, new { message = $"An error occurred during registration: {ex.Message}" });
             }
         }
 
@@ -310,13 +472,19 @@ namespace Api.Controllers
         [HttpPost("create-worker")]
         public async Task<ActionResult<RegisterResponse>> CreateWorker([FromBody] RegisterRequest request)
         {
+            Console.WriteLine("=== CREATE WORKER ENDPOINT CALLED ===");
+            Console.WriteLine($"Username: {request.Slapyvardis}, Role: {request.Role}");
+            
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 // Simple authorization: require admin role in header
                 if (!Request.Headers.TryGetValue("X-User-Role", out var roleHeader) || roleHeader != "Administratorius")
                 {
+                    Console.WriteLine("Authorization failed - not admin");
                     return StatusCode(403, new { message = "Admin authorization required" });
                 }
+                
                 // Validate input
                 if (string.IsNullOrWhiteSpace(request.Slapyvardis) || string.IsNullOrWhiteSpace(request.Slaptazodis))
                 {
@@ -344,11 +512,13 @@ namespace Api.Controllers
                 string role = request.Role ?? "Vairuotojas"; // Default to driver
 
                 // Validate role
-                var validRoles = new[] { "Vairuotojas", "Kontrolierius", "Administratorius", "Keleivis" };
+                var validRoles = new[] { "Vairuotojas", "Kontrolierius", "Administratorius" };
                 if (!validRoles.Contains(role))
                 {
                     return BadRequest(new { message = "Invalid role" });
                 }
+
+                Console.WriteLine($"Creating worker with role: {role}");
 
                 // Create new user
                 var naudotojas = new Naudotojas
@@ -366,6 +536,38 @@ namespace Api.Controllers
                 _context.Naudotojai.Add(naudotojas);
                 await _context.SaveChangesAsync();
 
+                Console.WriteLine($"Created Naudotojas with ID: {naudotojas.IdNaudotojas}");
+
+                // Create Darbuotojas entry for all workers
+                Console.WriteLine($"Creating Darbuotojas entry for {role} {naudotojas.IdNaudotojas}");
+                var darbuotojas = new Darbuotojas
+                {
+                    IdNaudotojas = naudotojas.IdNaudotojas,
+                    PastoKodas = request.PastoKodas,
+                    Adresas = request.Adresas,
+                    AsmenKodas = request.AsmenKodas
+                };
+                _context.Darbuotojai.Add(darbuotojas);
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"Created Darbuotojas entry for user {naudotojas.IdNaudotojas}");
+
+                // Create Vairuotojas entry if role is Vairuotojas
+                if (role == "Vairuotojas")
+                {
+                    Console.WriteLine($"Creating Vairuotojas entry with stazas: {request.VairavimosStazas}");
+                    var vairuotojas = new Vairuotojas
+                    {
+                        IdNaudotojas = naudotojas.IdNaudotojas,
+                        VairavimosStazas = request.VairavimosStazas
+                    };
+                    _context.Vairuotojai.Add(vairuotojas);
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"Created Vairuotojas entry for user {naudotojas.IdNaudotojas}");
+                }
+
+                await transaction.CommitAsync();
+                Console.WriteLine("=== WORKER CREATION SUCCESSFUL ===");
+
                 var response = new RegisterResponse
                 {
                     IdNaudotojas = naudotojas.IdNaudotojas,
@@ -378,8 +580,15 @@ namespace Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Create worker error: {ex.Message}");
-                return StatusCode(500, new { message = "An error occurred while creating worker account" });
+                await transaction.RollbackAsync();
+                Console.WriteLine("=== WORKER CREATION ERROR ===");
+                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                return StatusCode(500, new { message = $"An error occurred while creating worker account: {ex.Message}" });
             }
         }
     }

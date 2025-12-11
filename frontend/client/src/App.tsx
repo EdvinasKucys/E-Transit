@@ -6,6 +6,7 @@ import RegisterPage from "./pages/RegisterPage";
 import PassengerPage from "./pages/PassengerPage";
 import AdminPage from "./pages/AdminPage";
 import InspectorPage from "./pages/InspectorPage";
+import DriverPage from "./pages/DriverPage";
 import VehiclePage from "./pages/VehiclePage";
 import RoutesPage from "./pages/RoutesPage";             
 import AdminRoutesPage from "./pages/AdminRoutesPage";
@@ -26,7 +27,9 @@ function App() {
           <Route path="/passenger" element={<PassengerPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/inspector" element={<InspectorPage />} />
-          <Route path="/driver" element={<VehiclePage />} />
+          <Route path="/driver" element={<DriverPage />} />
+          {/* Vehicles management page */}
+          <Route path="/vehicles" element={<VehiclePage />} />
 
           {/* Routes pages */}
           <Route path="/routes" element={<RoutesPage />} />

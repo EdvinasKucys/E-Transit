@@ -1,4 +1,4 @@
-﻿// Controllers/VehiclesController.cs
+// Controllers/VehiclesController.cs
 using Api.Data;
 using Api.DTOs;
 using Api.Models;
@@ -34,13 +34,40 @@ namespace Api.Controllers
                     return StatusCode(500, "Cannot establish database connection");
                 }
 
-                var vehicles = await _context.TransportoPriemones
+                // Get role and user ID from headers for filtering
+                Request.Headers.TryGetValue("X-User-Role", out var roleHeader);
+                Request.Headers.TryGetValue("X-User-Id", out var userIdHeader);
+                
+                var role = roleHeader.ToString();
+                int? userId = null;
+                if (int.TryParse(userIdHeader.ToString(), out var parsedId))
+                {
+                    userId = parsedId;
+                }
+
+                var query = _context.TransportoPriemones
+                    .Include(v => v.Vairuotojas)
+                    .Include(v => v.Marsrutas)
+                    .AsQueryable();
+
+                // Role-based filtering: Drivers see only their vehicles
+                if (role == "Vairuotojas" && userId.HasValue)
+                {
+                    query = query.Where(v => v.FkVairuotojasIdNaudotojas == userId.Value);
+                }
+
+                var vehicles = await query
                     .Select(v => new VehicleDto
                     {
                         ValstybiniaiNum = v.ValstybiniaiNum,
                         Rida = v.Rida,
                         VietuSk = v.VietuSk,
-                        KuroTipas = v.KuroTipas
+                        KuroTipas = v.KuroTipas,
+                        FkVairuotojasIdNaudotojas = v.FkVairuotojasIdNaudotojas,
+                        VairuotojasVardas = v.Vairuotojas != null ? v.Vairuotojas.Vardas : null,
+                        VairuotojasPavarde = v.Vairuotojas != null ? v.Vairuotojas.Pavarde : null,
+                        FkMarsrutasNumeris = v.FkMarsrutasNumeris,
+                        MarsrutasPavadinimas = v.Marsrutas != null ? v.Marsrutas.Pavadinimas : null
                     })
                     .ToListAsync();
 
@@ -65,13 +92,20 @@ namespace Api.Controllers
             try
             {
                 var vehicle = await _context.TransportoPriemones
+                    .Include(v => v.Vairuotojas)
+                    .Include(v => v.Marsrutas)
                     .Where(v => v.ValstybiniaiNum == valstybiniaiNum)
                     .Select(v => new VehicleDto
                     {
                         ValstybiniaiNum = v.ValstybiniaiNum,
                         Rida = v.Rida,
                         VietuSk = v.VietuSk,
-                        KuroTipas = v.KuroTipas
+                        KuroTipas = v.KuroTipas,
+                        FkVairuotojasIdNaudotojas = v.FkVairuotojasIdNaudotojas,
+                        VairuotojasVardas = v.Vairuotojas != null ? v.Vairuotojas.Vardas : null,
+                        VairuotojasPavarde = v.Vairuotojas != null ? v.Vairuotojas.Pavarde : null,
+                        FkMarsrutasNumeris = v.FkMarsrutasNumeris,
+                        MarsrutasPavadinimas = v.Marsrutas != null ? v.Marsrutas.Pavadinimas : null
                     })
                     .FirstOrDefaultAsync();
 
@@ -103,23 +137,48 @@ namespace Api.Controllers
                     return Conflict($"Vehicle with number {createVehicleDto.ValstybiniaiNum} already exists");
                 }
 
+                // Check if driver is already assigned to another vehicle
+                if (createVehicleDto.FkVairuotojasIdNaudotojas.HasValue)
+                {
+                    var driverAssignedToVehicle = await _context.TransportoPriemones
+                        .FirstOrDefaultAsync(v => v.FkVairuotojasIdNaudotojas == createVehicleDto.FkVairuotojasIdNaudotojas);
+
+                    if (driverAssignedToVehicle != null)
+                    {
+                        return BadRequest(new { message = $"Driver is already assigned to vehicle {driverAssignedToVehicle.ValstybiniaiNum}" });
+                    }
+                }
+
                 var vehicle = new TransportoPriemone
                 {
                     ValstybiniaiNum = createVehicleDto.ValstybiniaiNum,
                     Rida = createVehicleDto.Rida,
                     VietuSk = createVehicleDto.VietuSk,
-                    KuroTipas = createVehicleDto.KuroTipas
+                    KuroTipas = createVehicleDto.KuroTipas,
+                    FkVairuotojasIdNaudotojas = createVehicleDto.FkVairuotojasIdNaudotojas,
+                    FkMarsrutasNumeris = createVehicleDto.FkMarsrutasNumeris
                 };
 
                 _context.TransportoPriemones.Add(vehicle);
                 await _context.SaveChangesAsync();
 
+                // Reload with navigation properties
+                var savedVehicle = await _context.TransportoPriemones
+                    .Include(v => v.Vairuotojas)
+                    .Include(v => v.Marsrutas)
+                    .FirstOrDefaultAsync(v => v.ValstybiniaiNum == vehicle.ValstybiniaiNum);
+
                 var vehicleDto = new VehicleDto
                 {
-                    ValstybiniaiNum = vehicle.ValstybiniaiNum,
-                    Rida = vehicle.Rida,
-                    VietuSk = vehicle.VietuSk,
-                    KuroTipas = vehicle.KuroTipas
+                    ValstybiniaiNum = savedVehicle!.ValstybiniaiNum,
+                    Rida = savedVehicle.Rida,
+                    VietuSk = savedVehicle.VietuSk,
+                    KuroTipas = savedVehicle.KuroTipas,
+                    FkVairuotojasIdNaudotojas = savedVehicle.FkVairuotojasIdNaudotojas,
+                    VairuotojasVardas = savedVehicle.Vairuotojas?.Vardas,
+                    VairuotojasPavarde = savedVehicle.Vairuotojas?.Pavarde,
+                    FkMarsrutasNumeris = savedVehicle.FkMarsrutasNumeris,
+                    MarsrutasPavadinimas = savedVehicle.Marsrutas?.Pavadinimas
                 };
 
                 return CreatedAtAction(nameof(GetVehicle), new { valstybiniaiNum = vehicle.ValstybiniaiNum }, vehicleDto);
@@ -149,11 +208,26 @@ namespace Api.Controllers
                     return NotFound();
                 }
 
+                // Check if driver is already assigned to another vehicle (excluding current vehicle)
+                if (updateVehicleDto.FkVairuotojasIdNaudotojas.HasValue)
+                {
+                    var driverAssignedToVehicle = await _context.TransportoPriemones
+                        .FirstOrDefaultAsync(v => 
+                            v.FkVairuotojasIdNaudotojas == updateVehicleDto.FkVairuotojasIdNaudotojas && 
+                            v.ValstybiniaiNum != valstybiniaiNum);
+
+                    if (driverAssignedToVehicle != null)
+                    {
+                        return BadRequest(new { message = $"Driver is already assigned to vehicle {driverAssignedToVehicle.ValstybiniaiNum}" });
+                    }
+                }
 
                 // Update all properties
                 vehicle.Rida = updateVehicleDto.Rida;
                 vehicle.VietuSk = updateVehicleDto.VietuSk;
                 vehicle.KuroTipas = updateVehicleDto.KuroTipas;
+                vehicle.FkVairuotojasIdNaudotojas = updateVehicleDto.FkVairuotojasIdNaudotojas;
+                vehicle.FkMarsrutasNumeris = updateVehicleDto.FkMarsrutasNumeris;
 
                 await _context.SaveChangesAsync();
 

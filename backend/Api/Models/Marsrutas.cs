@@ -9,9 +9,8 @@ namespace Api.Models
     {
         [Key]
         [Required]
-        [MaxLength(20)]
         [Column("numeris")]
-        public string Numeris { get; set; } = string.Empty;
+        public int Numeris { get; set; }
 
         [Required]
         [MaxLength(200)]

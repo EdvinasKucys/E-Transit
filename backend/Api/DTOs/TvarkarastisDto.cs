@@ -3,7 +3,7 @@ namespace Api.DTOs
     public class TvarkarastisDto
     {
         public int Id { get; set; }
-        public string MarsrutoNr { get; set; } = string.Empty;
+            public int MarsrutoNr { get; set; }
         public string? Pavadinimas { get; set; }
         public TimeSpan AtvykimoLaikas { get; set; }
         public TimeSpan IsvykimoLaikas { get; set; }
@@ -13,7 +13,7 @@ namespace Api.DTOs
 
     public class CreateTvarkarastisDto
     {
-        public string MarsrutoNr { get; set; } = string.Empty;
+        public int MarsrutoNr { get; set; }
         public string? Pavadinimas { get; set; }
         public TimeSpan AtvykimoLaikas { get; set; }
         public TimeSpan IsvykimoLaikas { get; set; }

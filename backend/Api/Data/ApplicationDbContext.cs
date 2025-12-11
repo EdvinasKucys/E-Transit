@@ -14,6 +14,8 @@ namespace Api.Data
         // User management
         public DbSet<Naudotojas> Naudotojai { get; set; }
         public DbSet<Keleivis> Keleivis { get; set; }
+        public DbSet<Darbuotojas> Darbuotojai { get; set; }
+        public DbSet<Vairuotojas> Vairuotojai { get; set; }
 
         // Update DbSet to use TransportoPriemone
         public DbSet<TransportoPriemone> TransportoPriemones { get; set; }
@@ -27,6 +29,9 @@ namespace Api.Data
         public DbSet<Stotele> Stoteles { get; set; }
         public DbSet<MarstrutoStotele> MarstrutoStoteles { get; set; }
         public DbSet<Tvarkarastis> Tvarkarastiai { get; set; }
+
+        // Maintenance
+        public DbSet<Gedimas> Gedimai { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -2,13 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { vehicleService, Vehicle, CreateVehicleDto, UpdateVehicleDto } from '../services/vehicleService';
+import { vehicleService, Vehicle, CreateVehicleDto, UpdateVehicleDto, Driver, Route } from '../services/vehicleService';
+import { gedimasService, Gedimas } from '../services/gedimasService';
 
 const VehiclePage: React.FC = () => {
     const { user, signOut } = useAuth();
     const navigate = useNavigate();
 
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [drivers, setDrivers] = useState<Driver[]>([]);
+    const [routes, setRoutes] = useState<Route[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
@@ -17,9 +20,16 @@ const VehiclePage: React.FC = () => {
         valstybiniaiNum: '',
         rida: 0,
         vietuSk: 0,
-        kuroTipas: 1
+        kuroTipas: 1,
+        fkVairuotojasIdNaudotojas: null as number | null,
+        fkMarsrutasNumeris: null as number | null
     });
     const [formLoading, setFormLoading] = useState(false);
+
+    // Malfunctions tab state (admin)
+    const [activeTabVehicle, setActiveTabVehicle] = useState<string | null>(null);
+    const [vehicleGedimai, setVehicleGedimai] = useState<Record<string, Gedimas[]>>({});
+    const [malTab, setMalTab] = useState<'unresolved'|'resolved'>('unresolved');
 
     const kuroTipasLabels: { [key: number]: string } = {
         1: 'Benzinas',
@@ -34,22 +44,78 @@ const VehiclePage: React.FC = () => {
     };
 
     // Fetch vehicles from API
-    const fetchVehicles = async () => {
+    const fetchVehicles = async (withLoading: boolean = true) => {
         try {
-            setLoading(true);
+            if (withLoading) setLoading(true);
             setError(null);
-            const data = await vehicleService.getAllVehicles();
+            const data = await vehicleService.getAllVehicles(user?.role, user?.idNaudotojas);
             setVehicles(data);
+
+            if (user?.role === 'admin') {
+                const entries: Record<string, Gedimas[]> = {};
+                for (const v of data) {
+                    try {
+                        const g = await gedimasService.getVehicleGedimai(v.valstybiniaiNum);
+                        entries[v.valstybiniaiNum] = g;
+                    } catch {
+                        entries[v.valstybiniaiNum] = [];
+                    }
+                }
+                setVehicleGedimai(entries);
+            }
         } catch (err) {
             console.error('Error fetching vehicles:', err);
             setError('Nepavyko gauti duomenų iš serverio');
         } finally {
-            setLoading(false);
+            if (withLoading) setLoading(false);
+        }
+    };
+
+    // Resolve malfunction (admin action)
+    const handleResolveGedimas = async (id: number, valstybiniaiNum: string) => {
+        try {
+            await gedimasService.resolveGedimas(id);
+            const updated = await gedimasService.getVehicleGedimai(valstybiniaiNum);
+            setVehicleGedimai(prev => ({ ...prev, [valstybiniaiNum]: updated }));
+        } catch (err) {
+            console.error('Resolve failed:', err);
+            alert('Nepavyko pažymėti gedimo kaip sutvarkyto');
+        }
+    };
+
+    const loadDropdowns = async () => {
+        try {
+            console.log('loadDropdowns started');
+            const [driversData, routesData] = await Promise.all([
+                vehicleService.getDrivers().catch(err => {
+                    console.error('getDrivers failed:', err);
+                    return [];
+                }),
+                vehicleService.getRoutes().catch(err => {
+                    console.error('getRoutes failed:', err);
+                    return [];
+                })
+            ]);
+            // Defensive: ensure array
+            const safeDrivers = Array.isArray(driversData) ? driversData : [];
+            setDrivers(safeDrivers);
+            setRoutes(routesData);
+        } catch (err) {
+            console.error('Error loading dropdowns:', err);
         }
     };
 
     useEffect(() => {
-        fetchVehicles();
+        const loadAll = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                await Promise.all([fetchVehicles(false), loadDropdowns()]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadAll();
     }, []);
 
     const resetForm = () => {
@@ -57,7 +123,9 @@ const VehiclePage: React.FC = () => {
             valstybiniaiNum: '',
             rida: 0,
             vietuSk: 0,
-            kuroTipas: 1
+            kuroTipas: 1,
+            fkVairuotojasIdNaudotojas: null,
+            fkMarsrutasNumeris: null
         });
         setEditingVehicle(null);
     };
@@ -72,7 +140,9 @@ const VehiclePage: React.FC = () => {
             valstybiniaiNum: vehicle.valstybiniaiNum,
             rida: vehicle.rida,
             vietuSk: vehicle.vietuSk,
-            kuroTipas: vehicle.kuroTipas
+            kuroTipas: vehicle.kuroTipas,
+            fkVairuotojasIdNaudotojas: vehicle.fkVairuotojasIdNaudotojas || null,
+            fkMarsrutasNumeris: vehicle.fkMarsrutasNumeris || null
         });
         setEditingVehicle(vehicle);
         setShowForm(true);
@@ -100,7 +170,9 @@ const VehiclePage: React.FC = () => {
                 const updateData: UpdateVehicleDto = {
                     rida: formData.rida,
                     vietuSk: formData.vietuSk,
-                    kuroTipas: formData.kuroTipas
+                    kuroTipas: formData.kuroTipas,
+                    fkVairuotojasIdNaudotojas: formData.fkVairuotojasIdNaudotojas,
+                    fkMarsrutasNumeris: formData.fkMarsrutasNumeris
                 };
                 await vehicleService.updateVehicle(editingVehicle.valstybiniaiNum, updateData);
             } else {
@@ -109,7 +181,9 @@ const VehiclePage: React.FC = () => {
                     valstybiniaiNum: formData.valstybiniaiNum,
                     rida: formData.rida,
                     vietuSk: formData.vietuSk,
-                    kuroTipas: formData.kuroTipas
+                    kuroTipas: formData.kuroTipas,
+                    fkVairuotojasIdNaudotojas: formData.fkVairuotojasIdNaudotojas,
+                    fkMarsrutasNumeris: formData.fkMarsrutasNumeris
                 };
                 await vehicleService.createVehicle(createData);
             }
@@ -142,12 +216,15 @@ const VehiclePage: React.FC = () => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: name === 'rida' || name === 'vietuSk' || name === 'kuroTipas'
-                ? parseInt(value)
-                : value
-        }));
+        let processedValue: any = value;
+        
+        if (name === 'rida' || name === 'vietuSk' || name === 'kuroTipas') {
+            processedValue = parseInt(value);
+        } else if (name === 'fkVairuotojasIdNaudotojas' || name === 'fkMarsrutasNumeris') {
+            processedValue = value === '' ? null : parseInt(value);
+        }
+        
+        setFormData(prev => ({ ...prev, [name]: processedValue }));
     };
 
     const clearData = () => {
@@ -285,6 +362,52 @@ const VehiclePage: React.FC = () => {
                                     </select>
                                 </div>
 
+                                {/* Driver Assignment */}
+                                <div>
+                                    <label htmlFor="fkVairuotojasIdNaudotojas" className="block text-sm font-medium text-gray-700 mb-1">
+                                        Vairuotojas (neprivaloma)
+                                    </label>
+                                    <select
+                                        id="fkVairuotojasIdNaudotojas"
+                                        name="fkVairuotojasIdNaudotojas"
+                                        value={formData.fkVairuotojasIdNaudotojas || ''}
+                                        onChange={handleInputChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">-- Nepaskirta --</option>
+                                        {drivers.map(driver => (
+                                            <option key={driver.idNaudotojas} value={driver.idNaudotojas}>
+                                                {driver.vardas} {driver.pavarde}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Route Assignment */}
+                                <div>
+                                    <label htmlFor="fkMarsrutasNumeris" className="block text-sm font-medium text-gray-700 mb-1">
+                                        Maršrutas (neprivaloma)
+                                    </label>
+                                    <select
+                                        id="fkMarsrutasNumeris"
+                                        name="fkMarsrutasNumeris"
+                                        value={formData.fkMarsrutasNumeris || ''}
+                                        onChange={handleInputChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        disabled={routes.length === 0}
+                                    >
+                                        <option value="">-- Nepaskirta --</option>
+                                        {routes.map(route => (
+                                            <option key={route.numeris} value={route.numeris}>
+                                                {route.pavadinimas}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {routes.length === 0 && (
+                                        <p className="text-xs text-gray-500 mt-1">Nėra galimų maršrutų</p>
+                                    )}
+                                </div>
+
                                 <div className="flex justify-end space-x-3 pt-4">
                                     <button
                                         type="button"
@@ -375,13 +498,25 @@ const VehiclePage: React.FC = () => {
                                             Kuro Tipas
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Vairuotojas
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Maršrutas
+                                        </th>
+                                        {user?.role === 'admin' && (
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Gedimai
+                                            </th>
+                                        )}
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Veiksmai
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {vehicles.map((vehicle) => (
-                                        <tr key={vehicle.valstybiniaiNum} className="hover:bg-gray-50 transition duration-150">
+                                        <React.Fragment key={vehicle.valstybiniaiNum}>
+                                        <tr className="hover:bg-gray-50 transition duration-150">
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                                 {vehicle.valstybiniaiNum}
                                             </td>
@@ -401,6 +536,25 @@ const VehiclePage: React.FC = () => {
                                                     {kuroTipasLabels[vehicle.kuroTipas]}
                                                 </span>
                                             </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {vehicle.vairuotojasVardas && vehicle.vairuotojasPavarde
+                                                    ? `${vehicle.vairuotojasVardas} ${vehicle.vairuotojasPavarde}`
+                                                    : '-'
+                                                }
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {vehicle.marsrutasPavadinimas || '-'}
+                                            </td>
+                                            {user?.role === 'admin' && (
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    <button
+                                                        onClick={() => setActiveTabVehicle(activeTabVehicle === vehicle.valstybiniaiNum ? null : vehicle.valstybiniaiNum)}
+                                                        className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs"
+                                                    >
+                                                        {activeTabVehicle === vehicle.valstybiniaiNum ? 'Slėpti' : 'Peržiūrėti'}
+                                                    </button>
+                                                </td>
+                                            )}
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                                                 <button
                                                     onClick={() => handleEdit(vehicle)}
@@ -416,6 +570,66 @@ const VehiclePage: React.FC = () => {
                                                 </button>
                                             </td>
                                         </tr>
+                                        {user?.role === 'admin' && activeTabVehicle === vehicle.valstybiniaiNum && (
+                                            <tr>
+                                                <td colSpan={7} className="px-6 py-4 bg-slate-50">
+                                                    <div className="bg-white border rounded-lg">
+                                                        <div className="flex items-center justify-between border-b px-4 py-2">
+                                                            <div className="flex space-x-2">
+                                                                <button
+                                                                    className={`px-3 py-1 rounded-md text-sm ${malTab==='unresolved'?'bg-blue-600 text-white':'bg-slate-200 text-slate-800'}`}
+                                                                    onClick={() => setMalTab('unresolved')}
+                                                                >
+                                                                    Nesutvarkyti
+                                                                </button>
+                                                                <button
+                                                                    className={`px-3 py-1 rounded-md text-sm ${malTab==='resolved'?'bg-blue-600 text-white':'bg-slate-200 text-slate-800'}`}
+                                                                    onClick={() => setMalTab('resolved')}
+                                                                >
+                                                                    Sutvarkyti
+                                                                </button>
+                                                            </div>
+                                                            <span className="text-sm text-slate-600">Gedimai: {vehicleGedimai[vehicle.valstybiniaiNum]?.length ?? 0}</span>
+                                                        </div>
+                                                        <div className="p-4">
+                                                            {(() => {
+                                                                const list = (vehicleGedimai[vehicle.valstybiniaiNum] || []);
+                                                                const filtered = malTab==='unresolved'
+                                                                    ? list.filter(g => g.gedimoBusena !== 'Sutvarkyta')
+                                                                    : list.filter(g => g.gedimoBusena === 'Sutvarkyta');
+
+                                                                if (filtered.length === 0) {
+                                                                    return <div className="text-center text-slate-600">{malTab==='unresolved' ? 'Nėra nesutvarkytų gedimų' : 'Nėra sutvarkytų gedimų'}</div>;
+                                                                }
+
+                                                                return (
+                                                                    <div className="space-y-3">
+                                                                        {filtered.map(g => (
+                                                                            <div key={g.idGedimas} className="p-3 border rounded-md flex items-center justify-between">
+                                                                                <div>
+                                                                                    <div className="font-medium text-slate-900">{g.gedimoTipas || '-'}</div>
+                                                                                    <div className="text-sm text-slate-600">{g.data ? new Date(g.data).toLocaleString('lt-LT') : '-'}</div>
+                                                                                    {g.komentaras && <div className="text-sm text-slate-700 mt-1">{g.komentaras}</div>}
+                                                                                </div>
+                                                                                {malTab==='unresolved' && (
+                                                                                    <button
+                                                                                        onClick={() => handleResolveGedimas(g.idGedimas, vehicle.valstybiniaiNum)}
+                                                                                        className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs"
+                                                                                    >
+                                                                                        Pažymėti kaip sutvarkytą
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
                             </table>

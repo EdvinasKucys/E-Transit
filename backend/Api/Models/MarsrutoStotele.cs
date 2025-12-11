@@ -8,17 +8,16 @@ namespace Api.Models
     public class MarstrutoStotele
     {
         [Key]
-        [Column("id")]
+        [Column("id_marsruto_stotele")]
         public int Id { get; set; }
 
         [Required]
-        [MaxLength(20)]
-        [Column("marsruto_nr")]
-        public string MarsrutoNr { get; set; } = string.Empty;
+        [Column("fk_marsrutas_numeris")]
+        public int MarsrutoNr { get; set; }
 
         [Required]
         [MaxLength(100)]
-        [Column("stoteles_pavadinimas")]
+        [Column("fk_stotele_pavadinimas")]
         public string StotelesPavadinimas { get; set; } = string.Empty;
 
         [Required]

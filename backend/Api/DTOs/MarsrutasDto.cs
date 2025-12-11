@@ -2,7 +2,7 @@ namespace Api.DTOs
 {
     public class MarsrutasDto
     {
-        public string Numeris { get; set; } = string.Empty;
+        public int Numeris { get; set; }
         public string Pavadinimas { get; set; } = string.Empty;
         public string PradziosStotele { get; set; } = string.Empty;
         public string PabaigosStotele { get; set; } = string.Empty;
@@ -14,7 +14,7 @@ namespace Api.DTOs
 
     public class CreateMarsrutasDto
     {
-        public string Numeris { get; set; } = string.Empty;
+        public int Numeris { get; set; }
         public string Pavadinimas { get; set; } = string.Empty;
         public string PradziosStotele { get; set; } = string.Empty;
         public string PabaigosStotele { get; set; } = string.Empty;

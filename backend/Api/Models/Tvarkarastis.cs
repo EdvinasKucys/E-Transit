@@ -12,9 +12,8 @@ namespace Api.Models
         public int Id { get; set; }
 
         [Required]
-        [MaxLength(20)]
-        [Column("marsruto_nr")]
-        public string MarsrutoNr { get; set; } = string.Empty;
+        [Column("fk_marsrutas_numeris")]
+        public int MarsrutoNr { get; set; }
 
         [MaxLength(200)]
         [Column("pavadinimas")]
