@@ -11,6 +11,10 @@ namespace Api.Data
         {
         }
 
+        // User management
+        public DbSet<Naudotojas> Naudotojai { get; set; }
+        public DbSet<Keleivis> Keleivis { get; set; }
+
         // Update DbSet to use TransportoPriemone
         public DbSet<TransportoPriemone> TransportoPriemones { get; set; }
 

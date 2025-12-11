@@ -2,6 +2,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 import PassengerPage from "./pages/PassengerPage";
 import AdminPage from "./pages/AdminPage";
 import InspectorPage from "./pages/InspectorPage";
@@ -19,6 +20,7 @@ function App() {
         <Routes>
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           {/* Demo “logged in” pages */}
           <Route path="/passenger" element={<PassengerPage />} />
