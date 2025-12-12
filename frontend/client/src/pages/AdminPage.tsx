@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import adminService from "../services/adminService";
 
-type AdminTab = "overview" | "workers" | "discounts" | "prices";
+type AdminTab = "overview" | "workers" | "discounts" | "prices" | "statistics";
 
 const AdminPage: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -327,6 +327,16 @@ const AdminPage: React.FC = () => {
             >
               Bilietų kainos
             </button>
+            <button
+              onClick={() => setActiveTab("statistics")}
+              className={`px-4 py-4 font-medium ${
+                activeTab === "statistics"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Statistika ir ataskaitos
+            </button>
           </div>
         </div>
       </div>
@@ -340,7 +350,7 @@ const AdminPage: React.FC = () => {
               <h2 className="text-2xl font-semibold mb-6 text-gray-800 text-center">
                 Maršrutų valdymas
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 justify-items-center">
                 <Link
                   to="/admin/routes"
                   className="bg-indigo-600 text-white px-6 py-4 rounded-xl hover:bg-indigo-700 transition-colors text-center font-medium shadow-sm w-full"
@@ -352,12 +362,6 @@ const AdminPage: React.FC = () => {
                   className="bg-purple-600 text-white px-6 py-4 rounded-xl hover:bg-purple-700 transition-colors text-center font-medium shadow-sm w-full"
                 >
                   Maršrutų optimizavimas
-                </Link>
-                <Link
-                  to="/admin/routes/stats"
-                  className="bg-blue-600 text-white px-6 py-4 rounded-xl hover:bg-blue-700 transition-colors text-center font-medium shadow-sm w-full"
-                >
-                  Statistika ir ataskaitos
                 </Link>
               </div>
             </div>
@@ -906,6 +910,41 @@ const AdminPage: React.FC = () => {
               </form>
             </div>
           </div>
+          </div>
+        )}
+
+        {/* Statistics & Reports Tab */}
+        {activeTab === "statistics" && (
+          <div className="p-6 space-y-6">
+            <h2 className="text-2xl font-bold mb-6">Statistika ir ataskaitos</h2>
+            
+            {/* Statistics Navigation */}
+            <div className="bg-white shadow-md rounded-2xl p-8">
+              <h3 className="text-xl font-semibold mb-6 text-gray-800 text-center">
+                Pasirinkite statistikos tipą
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Link
+                  to="/admin/routes/stats"
+                  className="bg-blue-600 text-white px-6 py-4 rounded-xl hover:bg-blue-700 transition-colors text-center font-medium shadow-sm"
+                >
+                  Maršrutų statistika
+                </Link>
+                <button
+                  className="bg-green-600 text-white px-6 py-4 rounded-xl hover:bg-green-700 transition-colors text-center font-medium shadow-sm"
+                  disabled
+                >
+                  Bilietų statistika
+                  <span className="block text-xs mt-1 opacity-75">(Netrukus)</span>
+                </button>
+                <Link
+                  to="/admin/fuel-stats"
+                  className="bg-orange-600 text-white px-6 py-4 rounded-xl hover:bg-orange-700 transition-colors text-center font-medium shadow-sm"
+                >
+                  Kuro sąnaudų statistika
+                </Link>
+              </div>
+            </div>
           </div>
         )}
       </div>

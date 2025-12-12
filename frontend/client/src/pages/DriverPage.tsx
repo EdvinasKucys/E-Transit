@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { vehicleService, Vehicle } from "../services/vehicleService";
 import { routesService, Route } from "../services/RoutesService";
 import { gedimasService, Gedimas } from "../services/gedimasService";
+import fuelStatsService from "../services/fuelStatsService";
 
 export default function DriverPage() {
   const { user, signOut } = useAuth();
@@ -21,6 +22,17 @@ export default function DriverPage() {
   });
   const [submittingMalfunction, setSubmittingMalfunction] = useState(false);
   const [malfunctionError, setMalfunctionError] = useState<string | null>(null);
+
+  // Fuel usage form
+  const [showFuelForm, setShowFuelForm] = useState(false);
+  const [fuelForm, setFuelForm] = useState({
+    data: new Date().toISOString().split("T")[0],
+    nukeliautasAtstumas: "",
+    kuroKiekis: "",
+  });
+  const [fuelSubmitting, setFuelSubmitting] = useState(false);
+  const [fuelError, setFuelError] = useState<string | null>(null);
+  const [fuelSuccess, setFuelSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== "driver") {
@@ -123,6 +135,54 @@ export default function DriverPage() {
       setMalfunctionError(err instanceof Error ? err.message : "Nepavyko įregistruoti gedimo");
     } finally {
       setSubmittingMalfunction(false);
+    }
+  };
+
+  const handleFuelFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFuelForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmitFuel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFuelError(null);
+    setFuelSuccess(null);
+
+    if (!vehicle) {
+      setFuelError("Nėra priskirto transporto");
+      return;
+    }
+
+    const distance = parseFloat(fuelForm.nukeliautasAtstumas);
+    const fuel = parseFloat(fuelForm.kuroKiekis);
+    if (isNaN(distance) || distance <= 0) {
+      setFuelError("Nukeliautas atstumas turi būti teigiamas skaičius");
+      return;
+    }
+    if (isNaN(fuel) || fuel <= 0) {
+      setFuelError("Kuro kiekis turi būti teigiamas skaičius");
+      return;
+    }
+
+    setFuelSubmitting(true);
+    try {
+      await fuelStatsService.createFuelRecord({
+        data: fuelForm.data,
+        nukeliautasAtstumas: distance,
+        kuroKiekis: fuel,
+        valstybiniaiNum: vehicle.valstybiniaiNum,
+      });
+      setFuelSuccess("Kuro sąnaudos sėkmingai užregistruotos");
+      setShowFuelForm(false);
+      setFuelForm({
+        data: new Date().toISOString().split("T")[0],
+        nukeliautasAtstumas: "",
+        kuroKiekis: "",
+      });
+    } catch (err) {
+      setFuelError(err instanceof Error ? err.message : "Nepavyko užregistruoti kuro sąnaudų");
+    } finally {
+      setFuelSubmitting(false);
     }
   };
 
@@ -480,6 +540,94 @@ export default function DriverPage() {
                     </div>
                     <p className="text-slate-600">Nėra registruotų gedimų</p>
                   </div>
+                )}
+              </div>
+            </div>
+
+            {/* Fuel Usage Section */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-slate-900">Registruoti kuro sąnaudas</h2>
+                <button
+                  onClick={() => setShowFuelForm(!showFuelForm)}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition font-medium text-sm"
+                >
+                  {showFuelForm ? "Atšaukti" : "Pridėti įrašą"}
+                </button>
+              </div>
+              <div className="px-6 py-6">
+                {showFuelForm && (
+                  <form onSubmit={handleSubmitFuel} className="mb-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                    <h3 className="text-lg font-medium text-slate-900 mb-4">Naujas kuro įrašas</h3>
+
+                    {fuelError && (
+                      <div className="bg-red-50 border border-red-200 rounded-md p-3 text-red-700 text-sm mb-4">
+                        {fuelError}
+                      </div>
+                    )}
+                    {fuelSuccess && (
+                      <div className="bg-green-50 border border-green-200 rounded-md p-3 text-green-700 text-sm mb-4">
+                        {fuelSuccess}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Data *</label>
+                        <input
+                          type="date"
+                          name="data"
+                          value={fuelForm.data}
+                          onChange={handleFuelFormChange}
+                          disabled={fuelSubmitting}
+                          className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-600 disabled:bg-slate-100"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Nukeliautas atstumas (km) *</label>
+                        <input
+                          type="number"
+                          name="nukeliautasAtstumas"
+                          value={fuelForm.nukeliautasAtstumas}
+                          onChange={handleFuelFormChange}
+                          disabled={fuelSubmitting}
+                          step="0.1"
+                          min="0"
+                          className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-600 disabled:bg-slate-100"
+                          placeholder="0.0"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Kuro kiekis ({vehicle.kuroTipas === 4 ? 'kWh' : 'L'}) *</label>
+                        <input
+                          type="number"
+                          name="kuroKiekis"
+                          value={fuelForm.kuroKiekis}
+                          onChange={handleFuelFormChange}
+                          disabled={fuelSubmitting}
+                          step="0.01"
+                          min="0"
+                          className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-600 disabled:bg-slate-100"
+                          placeholder="0.00"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={fuelSubmitting}
+                      className="mt-4 w-full bg-orange-600 text-white py-2 rounded-md hover:bg-orange-700 disabled:bg-slate-400 font-medium transition"
+                    >
+                      {fuelSubmitting ? "Siunčiama..." : "Išsaugoti kuro įrašą"}
+                    </button>
+                  </form>
+                )}
+
+                {!showFuelForm && (
+                  <p className="text-slate-600 text-sm">Naudokite „Pridėti įrašą“, kad užregistruotumėte naujas kuro sąnaudas.</p>
                 )}
               </div>
             </div>

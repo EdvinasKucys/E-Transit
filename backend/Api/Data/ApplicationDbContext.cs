@@ -32,6 +32,7 @@ namespace Api.Data
 
         // Maintenance
         public DbSet<Gedimas> Gedimai { get; set; }
+        public DbSet<Sanaudos> Sanaudos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
