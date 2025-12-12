@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ticketService } from "../services/TicketService";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+//import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import adminService from "../services/adminService";
 
