@@ -174,7 +174,8 @@ namespace Api.Controllers
 
                 var sanaudos = new Sanaudos
                 {
-                    Data = dto.Data,
+                    // Ensure UTC kind or map to date only
+                    Data = DateTime.SpecifyKind(dto.Data, DateTimeKind.Utc),
                     NukeliautasAtstumas = dto.NukeliautasAtstumas,
                     KuroKiekis = dto.KuroKiekis,
                     FkTransportoPriemoneValstybiniaiNum = dto.ValstybiniaiNum
