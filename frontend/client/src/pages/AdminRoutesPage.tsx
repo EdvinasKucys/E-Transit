@@ -31,7 +31,7 @@ const AdminRoutesPage: React.FC = () => {
   const [showStopForm, setShowStopForm] = useState(false);
   const [stopForm, setStopForm] = useState({
     pavadinimas: "",
-    savivaldybe: "",
+    adresas: "",
     koordinatesX: 0,
     koordinatesY: 0,
     tipas: "Tarpine",
@@ -182,7 +182,7 @@ const AdminRoutesPage: React.FC = () => {
       setShowStopForm(false);
       setStopForm({
         pavadinimas: "",
-        savivaldybe: "",
+        adresas: "",
         koordinatesX: 0,
         koordinatesY: 0,
         tipas: "Tarpine",
@@ -551,7 +551,7 @@ const AdminRoutesPage: React.FC = () => {
                   <td className="px-6 py-4 text-sm font-medium">
                     {stop.pavadinimas}
                   </td>
-                  <td className="px-6 py-4 text-sm">{stop.savivaldybe}</td>
+                  <td className="px-6 py-4 text-sm">{stop.adresas}</td>
                   <td className="px-6 py-4 text-sm">{stop.tipas}</td>
                   <td className="px-6 py-4 text-sm">
                     <button
@@ -601,9 +601,9 @@ const AdminRoutesPage: React.FC = () => {
                 </label>
                 <input
                   className="w-full border rounded px-3 py-2 text-sm"
-                  value={stopForm.savivaldybe}
+                  value={stopForm.adresas}
                   onChange={(e) =>
-                    setStopForm({ ...stopForm, savivaldybe: e.target.value })
+                    setStopForm({ ...stopForm, adresas: e.target.value })
                   }
                   required
                 />

@@ -22,7 +22,7 @@ export interface Route {
 
 export interface Stop {
   pavadinimas: string;
-  savivaldybe: string;
+  adresas: string;
   koordinatesX: number;
   koordinatesY: number;
   tipas: string;
@@ -114,7 +114,7 @@ export const routesService = {
 
   async createStop(data: {
     pavadinimas: string;
-    savivaldybe: string;
+    adresas: string;
     koordinatesX: number;
     koordinatesY: number;
     tipas: string;

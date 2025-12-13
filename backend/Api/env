@@ -1,0 +1,5 @@
+DB_HOST=79.76.37.115
+DB_PORT=5432
+DB_NAME=TransportSystemDB
+DB_USER=postgres
+DB_PASSWORD=password

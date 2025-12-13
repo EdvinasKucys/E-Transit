@@ -190,7 +190,7 @@ const RouteStatsPage: React.FC = () => {
     csv += "Pavadinimas,Savivaldybė,Tipas,Koordinatės X,Koordinatės Y\n";
     stops.forEach((stop) => {
       csv += `"${stop.pavadinimas}",`;
-      csv += `"${stop.savivaldybe}",`;
+      csv += `"${stop.adresas}",`;
       csv += `${stop.tipas},`;
       csv += `${stop.koordinatesX},`;
       csv += `${stop.koordinatesY}\n`;
