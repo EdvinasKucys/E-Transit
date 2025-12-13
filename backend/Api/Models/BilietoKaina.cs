@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Api.Models
 {
-    [Table("nuolaidos")]
-    public class Nuolaida
+    [Table("ticket_price")]
+    public class TicketPrice
     {
         [Key]
         [Column("id")]
@@ -15,9 +15,9 @@ namespace Api.Models
         [Column("pavadinimas")]
         public string Pavadinimas { get; set; } = string.Empty;
 
-        // procentais, pvz. 50 = 50%
+        
         [Required]
-        [Column("procentas")]
-        public int Procentas { get; set; }
+        [Column("kaina")]
+        public Decimal Kaina { get; set; }
     }
 }

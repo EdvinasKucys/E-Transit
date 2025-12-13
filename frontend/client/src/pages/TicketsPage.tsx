@@ -41,6 +41,7 @@ const TicketsPage: React.FC = () => {
         naudotojas: user?.name ?? null,
         nuolaidaId: parseInt(selectedDiscount) || null,
       });
+
       alert(`Bilietas sėkmingai nupirktas!\nID: ${newTicket.id}`);
       setTickets((prev) => [...prev, newTicket]);
     } catch (err) {
@@ -127,6 +128,57 @@ const TicketsPage: React.FC = () => {
               <option value="grynais">Grynais</option>
             </select>
           </div>
+           
+           {/* Payment‑method specific form */}
+            {paymentMethod === "kortele" && (
+              <div className="space-y-2 mt-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Kortelės numeris
+                </label>
+                <input
+                  type="text"
+                  className="w-full border rounded-md px-3 py-2"
+                  placeholder="1234 5678 9012 3456"
+                />
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    className="w-1/2 border rounded-md px-3 py-2"
+                    placeholder="MM/YY"
+                  />
+                  <input
+                    type="text"
+                    className="w-1/2 border rounded-md px-3 py-2"
+                    placeholder="CVV"
+                  />
+                </div>
+              </div>
+            )}
+
+            {paymentMethod === "paypal" && (
+              <div className="space-y-2 mt-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  PayPal el. paštas
+                </label>
+                <input
+                  type="email"
+                  className="w-full border rounded-md px-3 py-2"
+                  placeholder="you@example.com"
+                />
+                  <input
+                    type="text"
+                    className="w-full border rounded-md px-3 py-2"
+                    placeholder="Password"
+                  />
+              </div>
+              
+            )}
+
+            {paymentMethod === "grynais" && (
+              <p className="mt-2 text-sm text-gray-600">
+                Apmokėjimas grynais vairuotojui transporto priemonėje.
+              </p>
+            )}
 
           <button
             type="submit"

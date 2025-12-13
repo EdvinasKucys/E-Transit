@@ -21,8 +21,12 @@ namespace Api.Data
         public DbSet<TransportoPriemone> TransportoPriemones { get; set; }
 
         // Update DbSet to use ticketing
-        public DbSet<Nuolaida> Nuolaidos  { get; set; }
+        public DbSet<Nuolaida> Nuolaidos  { get; set; } = null!;
         public DbSet<Bilietas> Bilietai { get; set; }
+
+        public DbSet<TicketPrice> TicketPrices { get; set; } = null!;
+
+
 
         // Update DbSet to use Routes
         public DbSet<Marsrutas> Marsrutai { get; set; }

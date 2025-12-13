@@ -1,8 +1,7 @@
-// src/services/ticketService.ts
+
 import axios from "axios";
 
-// change this to your backend URL
-const API_BASE = "http://localhost:5000";
+const API_BASE = "http://localhost:5011";
 
 export interface TicketDto {
   id: string;
@@ -14,6 +13,12 @@ export interface TicketDto {
   nuolaidaId?: number | null;
   transportoPriemonesKodas?: string | null;
   statusas: number;
+}
+
+export interface TicketPrice {
+  id: number;
+  pavadinimas: string;
+  kaina: number;
 }
 
 export const ticketService = {
@@ -51,6 +56,18 @@ export const ticketService = {
   // 4) ADMIN: get all tickets
   async getAllAdminTickets() {
     const res = await axios.get<TicketDto[]>(`${API_BASE}/api/admin/tickets`);
+    return res.data;
+  },
+
+  // 5) ADMIN: get single global ticket price
+  async getPrice(): Promise<TicketPrice> {
+    const res = await axios.get<TicketPrice>(`${API_BASE}/api/ticket-price`);
+    return res.data;
+  },
+
+  // 6) ADMIN: update global ticket price
+  async updatePrice(data: { pavadinimas: string; kaina: number }): Promise<TicketPrice> {
+    const res = await axios.put<TicketPrice>(`${API_BASE}/api/ticket-price`, data);
     return res.data;
   },
 };

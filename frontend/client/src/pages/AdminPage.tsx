@@ -5,6 +5,10 @@ import { useAuth } from "../context/AuthContext";
 //import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import adminService from "../services/adminService";
+import { discountService } from "../services/DiscountService";
+
+
+
 
 type AdminTab = "overview" | "workers" | "discounts" | "prices" | "statistics";
 
@@ -35,19 +39,19 @@ const AdminPage: React.FC = () => {
   const [workerSuccess, setWorkerSuccess] = useState<string | null>(null);
 
   // mock data instead of DB
-  const [discounts, setDiscounts] = useState([
-    { id: 1, name: "Studentas", percent: 50 },
-    { id: 2, name: "Moksleivis", percent: 30 },
-  ]);
+  const [discounts, setDiscounts] = useState<
+  { id: number; name: string; percent: number }[]
+  >([]);
   const [editingDiscount, setEditingDiscount] = useState<null | { id: number; name: string; percent: number }>(null);
   const [discountForm, setDiscountForm] = useState({ name: "", percent: 0 });
 
-  const [ticketPrices, setTicketPrices] = useState([
-    { id: 1, name: "Vienkartinis", basePrice: 1.2 },
-    { id: 2, name: "Dienos", basePrice: 3.5 },
-  ]);
-  const [editingPrice, setEditingPrice] = useState<null | { id: number; name: string; basePrice: number }>(null);
+  const [ticketPrices, setTicketPrices] = useState<
+    { id: number; name: string; basePrice: number }[]
+  >([]);
   const [priceForm, setPriceForm] = useState({ name: "", basePrice: 0 });
+  const [editingPrice, setEditingPrice] = useState<
+    { id: number; name: string; basePrice: number } | null
+  >(null);
 
   const [statsRange, setStatsRange] = useState<"today" | "week" | "month">("today");
   const [stats, setStats] = useState<{ sold: number; revenue: number } | null>(null);
@@ -233,42 +237,123 @@ const AdminPage: React.FC = () => {
   }, []);
 
   // discounts
-  const handleDiscountSubmit = (e: React.FormEvent) => {
+  const handleDiscountSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!discountForm.name.trim()) return;
 
-    if (editingDiscount) {
-      setDiscounts((prev) =>
-        prev.map((d) =>
-          d.id === editingDiscount.id ? { ...d, name: discountForm.name, percent: discountForm.percent } : d
-        )
-      );
-    } else {
-      const newId = discounts.length ? Math.max(...discounts.map((d) => d.id)) + 1 : 1;
-      setDiscounts((prev) => [...prev, { id: newId, name: discountForm.name, percent: discountForm.percent }]);
+    try {
+      if (editingDiscount) {
+        const updated = await discountService.update(editingDiscount.id, {
+          name: discountForm.name,
+          percent: discountForm.percent,
+        });
+
+        setDiscounts((prev) =>
+          prev.map((d) =>
+            d.id === updated.id
+              ? {
+                  id: updated.id,
+                  name: updated.pavadinimas,
+                  percent: updated.procentas,
+                }
+              : d
+          )
+        );
+      } else {
+        const created = await discountService.create({
+          name: discountForm.name,
+          percent: discountForm.percent,
+        });
+
+        setDiscounts((prev) => [
+          ...prev,
+          {
+            id: created.id,
+            name: created.pavadinimas,
+            percent: created.procentas,
+          },
+        ]);
+      }
+
+      setEditingDiscount(null);
+      setDiscountForm({ name: "", percent: 0 });
+    } catch (err) {
+      console.error("Failed to save discount", err);
     }
-    setEditingDiscount(null);
-    setDiscountForm({ name: "", percent: 0 });
   };
+
+  //Delete discount
+  const handleDeleteDiscount = async (id: number) => {
+  if (!confirm("Ar tikrai norite ištrinti šią nuolaidą?")) return;
+
+  const prev = [...discounts];
+  // optimistic remove in UI
+  setDiscounts((d) => d.filter((x) => x.id !== id));
+
+  try {
+    await discountService.remove(id);
+  } catch (e) {
+    console.error("Failed to delete discount", e);
+    // revert if API failed
+    setDiscounts(prev);
+  }
+};
+
+
+  //Load discounts
+  useEffect(() => {
+    const loadDiscounts = async () => {
+      try {
+        const data = await discountService.getAll();
+        setDiscounts(
+          data.map((d) => ({
+            id: d.id,
+            name: d.pavadinimas,
+            percent: d.procentas,
+          }))
+        );
+      } catch (e) {
+        console.error("Failed to load discounts", e);
+      }
+    };
+    loadDiscounts();
+  }, []);
+
+  // Load ticket prices
+  useEffect(() => {
+    const loadPrice = async () => {
+      try {
+        const p = await ticketService.getPrice();
+        setTicketPrices([
+          { id: p.id, name: p.pavadinimas, basePrice: p.kaina },
+        ]);
+        setPriceForm({ name: p.pavadinimas, basePrice: p.kaina });
+      } catch (err) {
+        console.error("Failed to load ticket price", err);
+      }
+    };
+  
+    loadPrice();
+  }, []);
 
   // prices
-  const handlePriceSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!priceForm.name.trim()) return;
+  // const handlePriceSubmit = (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!priceForm.name.trim()) return;
 
-    if (editingPrice) {
-      setTicketPrices((prev) =>
-        prev.map((p) =>
-          p.id === editingPrice.id ? { ...p, name: priceForm.name, basePrice: priceForm.basePrice } : p
-        )
-      );
-    } else {
-      const newId = ticketPrices.length ? Math.max(...ticketPrices.map((p) => p.id)) + 1 : 1;
-      setTicketPrices((prev) => [...prev, { id: newId, name: priceForm.name, basePrice: priceForm.basePrice }]);
-    }
-    setEditingPrice(null);
-    setPriceForm({ name: "", basePrice: 0 });
-  };
+  //   if (editingPrice) {
+  //     setTicketPrices((prev) =>
+  //       prev.map((p) =>
+  //         p.id === editingPrice.id ? { ...p, name: priceForm.name, basePrice: priceForm.basePrice } : p
+  //       )
+  //     );
+  //   } else {
+  //     const newId = ticketPrices.length ? Math.max(...ticketPrices.map((p) => p.id)) + 1 : 1;
+  //     setTicketPrices((prev) => [...prev, { id: newId, name: priceForm.name, basePrice: priceForm.basePrice }]);
+  //   }
+  //   setEditingPrice(null);
+  //   setPriceForm({ name: "", basePrice: 0 });
+  // };
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
@@ -765,10 +850,10 @@ const AdminPage: React.FC = () => {
                       <td className="px-4 py-2 text-sm">{d.name}</td>
                       <td className="px-4 py-2 text-sm">{d.percent}%</td>
                       <td className="px-4 py-2 text-sm space-x-2">
-                        <button onClick={() => { setEditingDiscount(d); setDiscountForm({ name: d.name, percent: d.percent }); }} className="text-indigo-600">
+                        <button onClick={() => { setEditingDiscount(d); setDiscountForm({ name: d.name, percent: d.percent }); }} className="mr-2 text-indigo-600">
                           Redaguoti
                         </button>
-                        <button onClick={() => setDiscounts(prev => prev.filter(x => x.id !== d.id))} className="text-red-600">
+                        <button onClick={() => handleDeleteDiscount(d.id)} className="mr-2 text-red-600">
                           Ištrinti
                         </button>
                       </td>
@@ -819,98 +904,130 @@ const AdminPage: React.FC = () => {
           </div>
         )}
 
-        {/* PRICES TAB */}
-        {activeTab === "prices" && (
-          <div className="bg-white shadow rounded-lg p-6 space-y-4 mb-10">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Bilietų kainos</h2>
-              {editingPrice && (
-                <button
-                  onClick={() => {
-                    setEditingPrice(null);
-                    setPriceForm({ name: "", basePrice: 0 });
-                  }}
-                  className="text-sm text-slate-600 underline"
-                >
-                  Atšaukti
-                </button>
-              )}
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-            <div>
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Pavadinimas
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Kaina
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Veiksmai
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {ticketPrices.map((p) => (
-                    <tr key={p.id}>
-                      <td className="px-4 py-2 text-sm">{p.name}</td>
-                      <td className="px-4 py-2 text-sm">€{p.basePrice.toFixed(2)}</td>
-                      <td className="px-4 py-2 text-sm space-x-2">
-                        <button onClick={() => { setEditingPrice(p); setPriceForm({ name: p.name, basePrice: p.basePrice }); }} className="text-indigo-600">
-                          Redaguoti
-                        </button>
-                        <button onClick={() => setTicketPrices(prev => prev.filter(x => x.id !== p.id))} className="text-red-600">
-                          Ištrinti
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {ticketPrices.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="px-4 py-2 text-sm text-slate-500">
-                        Nėra kainų.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="bg-gray-50 rounded p-4">
-              <h3 className="text-sm font-semibold mb-3">
-                {editingPrice ? "Redaguoti kainą" : "Nauja kaina"}
-              </h3>
-              <form onSubmit={handlePriceSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-sm mb-1">Pavadinimas</label>
-                  <input
-                    className="w-full border rounded px-2 py-1 text-sm"
-                    value={priceForm.name}
-                    onChange={(e) => setPriceForm(prev => ({ ...prev, name: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1">Kaina (€)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    className="w-full border rounded px-2 py-1 text-sm"
-                    value={priceForm.basePrice}
-                    onChange={(e) => setPriceForm(prev => ({ ...prev, basePrice: Number(e.target.value) }))}
-                    required
-                  />
-                </div>
-                <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm">
-                  {editingPrice ? "Išsaugoti" : "Pridėti"}
-                </button>
-              </form>
-            </div>
-          </div>
-          </div>
-        )}
+{/* PRICES TAB */}
+{activeTab === "prices" && (
+  <div className="bg-white shadow rounded-lg p-6">
+    <div className="flex items-center justify-between">
+      <div>
+        <h2 className="text-xl font-semibold text-gray-800">Bilieto kaina</h2>
+        <p className="text-sm text-gray-500">Vienintelio bilieto kaina.</p>
+      </div>
+
+      {!editingPrice ? (
+        <button
+          onClick={() => {
+            const current = ticketPrices[0] ?? { id: 1, name: "Vienkartinis", basePrice: 0 };
+            setEditingPrice(current);
+            setPriceForm({ name: current.name, basePrice: current.basePrice });
+          }}
+          className="text-sm text-indigo-600 hover:underline"
+        >
+          Redaguoti
+        </button>
+      ) : (
+        <button
+          onClick={() => {
+            setEditingPrice(null);
+            setPriceForm({ name: "", basePrice: 0 });
+          }}
+          className="text-sm text-slate-600 hover:underline"
+        >
+          Atšaukti
+        </button>
+      )}
+    </div>
+
+    <div className="mt-6">
+      {/* Display current price */}
+      <div className="flex items-baseline gap-4">
+        <span className="text-sm text-slate-500">Dabartinė kaina:</span>
+        <span className="text-3xl font-bold text-blue-600">
+          €{(ticketPrices[0]?.basePrice ?? 0).toFixed(2)}
+        </span>
+        <span className="text-sm text-slate-500">
+          — {ticketPrices[0]?.name ?? "Vienkartinis"}
+        </span>
+      </div>
+
+      {/* Inline edit form */}
+      {editingPrice && (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!priceForm.name.trim()) return;
+
+            try {
+              // send to backend
+              const updated = await ticketService.updatePrice({
+                pavadinimas: priceForm.name,
+                kaina: Number(priceForm.basePrice),
+              });
+
+              // update local state from response
+              setTicketPrices([
+                {
+                  id: updated.id,
+                  name: updated.pavadinimas,
+                  basePrice: updated.kaina,
+                },
+              ]);
+
+              setEditingPrice(null);
+              setPriceForm({
+                name: updated.pavadinimas,
+                basePrice: updated.kaina,
+              });
+            } catch (err) {
+              console.error("Failed to save ticket price", err);
+            }
+          }}
+          className="mt-4 flex gap-3 items-center"
+        >
+          <input
+            className="border rounded px-3 py-2 text-sm w-48"
+            value={priceForm.name}
+            onChange={(e) =>
+              setPriceForm((p) => ({ ...p, name: e.target.value }))
+            }
+            placeholder="Pavadinimas"
+            required
+          />
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            className="border rounded px-3 py-2 text-sm w-32"
+            value={priceForm.basePrice}
+            onChange={(e) =>
+              setPriceForm((p) => ({
+                ...p,
+                basePrice: Number(e.target.value),
+              }))
+            }
+            required
+          />
+          <button
+            type="submit"
+            className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+          >
+            Išsaugoti
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingPrice(null);
+              setPriceForm({ name: "", basePrice: 0 });
+            }}
+            className="px-3 py-2 text-sm text-slate-600 hover:underline"
+          >
+            Atšaukti
+          </button>
+        </form>
+      )}
+    </div>
+  </div>
+)}
+
 
         {/* Statistics & Reports Tab */}
         {activeTab === "statistics" && (
