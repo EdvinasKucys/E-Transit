@@ -12,12 +12,15 @@ const TicketStatsPage: React.FC = () => {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [selectedDiscount, setSelectedDiscount] = useState<string>("");
+  const [selectedVehicle, setSelectedVehicle] = useState<string>("");
   const [discounts, setDiscounts] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<string[]>([]);
   const navigate = useNavigate();
   
   // Derived chart data
   const [lineData, setLineData] = useState<Array<{ date: string; count: number }>>([]);
   const [pieData, setPieData] = useState<{ label: string; value: number; color: string }[]>([]);
+  const [discountData, setDiscountData] = useState<{ label: string; value: number; color: string }[]>([]);
   useEffect(() => {
     const fetchTicketStats = async () => {
       try {
@@ -40,6 +43,16 @@ const TicketStatsPage: React.FC = () => {
           }));
           setDiscounts(normalized);
         }
+        
+        // Extract unique vehicles from tickets
+        const uniqueVehicles = Array.from(
+          new Set(
+            ticketsData
+              .filter((t: any) => t.transportoPriemonesKodas)
+              .map((t: any) => t.transportoPriemonesKodas)
+          )
+        ).sort();
+        setVehicles(uniqueVehicles);
         
         setError(null);
       } catch (err) {
@@ -85,8 +98,24 @@ const TicketStatsPage: React.FC = () => {
         { label: "Pasibaigęs", value: stats.statusBreakdown.pasibaiges || 0, color: colors[2] },
       ];
       setPieData(slices);
+      
+      // Discount breakdown
+      if (stats.discountBreakdown && Object.keys(stats.discountBreakdown).length > 0) {
+        const colors2 = ["#EF4444", "#8B5CF6", "#10B981", "#F59E0B", "#06B6D4"];
+        const discountSlices = Object.entries(stats.discountBreakdown)
+          .map(([label, value], idx) => ({
+            label,
+            value: value as number,
+            color: colors2[idx % colors2.length],
+          }))
+          .sort((a, b) => b.value - a.value);
+        setDiscountData(discountSlices);
+      } else {
+        setDiscountData([]);
+      }
     } else {
       setPieData([]);
+      setDiscountData([]);
     }
   }, [filteredTickets, stats]);
 
@@ -202,23 +231,47 @@ const TicketStatsPage: React.FC = () => {
       }
     }
     
+    // Filter by vehicle
+    if (selectedVehicle) {
+      filtered = filtered.filter((t: any) => t.transportoPriemonesKodas === selectedVehicle);
+    }
+    
     setFilteredTickets(filtered);
     
     // Recalculate stats
     const totalSold = filtered.length;
     const totalRevenue = filtered.reduce((sum: number, t: any) => sum + (t.galutineKaina || 0), 0);
+    const avgPrice = totalSold > 0 ? totalRevenue / totalSold : 0;
+    const activeTickets = filtered.filter((t: any) => t.statusas === 2).length;
+    const activationRate = totalSold > 0 ? ((activeTickets / totalSold) * 100).toFixed(1) : 0;
+    
     const statusBreakdown = {
       nupirktas: filtered.filter((t: any) => t.statusas === 1).length,
       aktyvuotas: filtered.filter((t: any) => t.statusas === 2).length,
       pasibaiges: filtered.filter((t: any) => t.statusas === 3).length,
     };
     
+    // Discount breakdown - use actual discount names from database
+    const discountBreakdown: Record<string, number> = {};
+    filtered.forEach((t: any) => {
+      let discountLabel = "Be nuolaidos";
+      if (t.nuolaidaId) {
+        const discount = discounts.find((d: any) => d.id === t.nuolaidaId);
+        discountLabel = discount ? discount.pavadinimas : `Nuolaida #${t.nuolaidaId}`;
+      }
+      discountBreakdown[discountLabel] = (discountBreakdown[discountLabel] || 0) + 1;
+    });
+    
     setStats({
       totalSold,
       totalRevenue,
+      avgPrice,
+      activeTickets,
+      activationRate,
       statusBreakdown,
+      discountBreakdown,
     });
-  }, [dateRange, startDate, endDate, selectedDiscount, tickets]);
+  }, [dateRange, startDate, endDate, selectedDiscount, selectedVehicle, tickets, discounts]);
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
@@ -294,21 +347,21 @@ const TicketStatsPage: React.FC = () => {
         </div>
 
           {/* Bottom Diagrams */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white shadow-md rounded-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <div className="bg-white shadow-md rounded-lg p-6 md:col-span-1">
               <h3 className="text-lg font-semibold mb-4">Bilietų skaičius per dieną</h3>
               <div className="w-full">
                 <LineChartSVG data={lineData} />
               </div>
             </div>
 
-            <div className="bg-white shadow-md rounded-lg p-6">
+            <div className="bg-white shadow-md rounded-lg p-6 md:col-span-1">
               <h3 className="text-lg font-semibold mb-4">Bilietų statusų pasiskirstymas</h3>
               <div className="flex flex-col items-center">
                 <PieChartSVG data={pieData} size={160} />
-                <div className="mt-4 flex gap-4">
+                <div className="mt-4 flex flex-col gap-2 text-center">
                   {pieData.map((p) => (
-                    <div key={p.label} className="flex items-center gap-2">
+                    <div key={p.label} className="flex items-center justify-center gap-2">
                       <span style={{ width: 12, height: 12, background: p.color, display: 'inline-block' }} className="rounded-sm" />
                       <span className="text-sm text-gray-700">{p.label} — {p.value}</span>
                     </div>
@@ -316,42 +369,87 @@ const TicketStatsPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            <div className="bg-white shadow-md rounded-lg p-6 md:col-span-1">
+              <h3 className="text-lg font-semibold mb-4">Nuolaidų pasiskirstymas</h3>
+              <div className="flex flex-col items-center">
+                <PieChartSVG data={discountData} size={160} />
+                <div className="mt-4 flex flex-col gap-2 text-center text-xs">
+                  {discountData.map((p) => (
+                    <div key={p.label} className="flex items-center justify-center gap-2">
+                      <span style={{ width: 10, height: 10, background: p.color, display: 'inline-block' }} className="rounded-sm" />
+                      <span className="text-gray-700">{p.label.substring(0, 20)}... — {p.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-        <div className="border-t pt-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Filtruoti pagal nuolaidą</h3>
-          <select
-            value={selectedDiscount}
-            onChange={(e) => setSelectedDiscount(e.target.value)}
-            className="w-full border rounded-md px-3 py-2"
-          >
-            <option value="">Visos nuolaidos</option>
-            <option value="0">Be nuolaidos</option>
-            {discounts.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.pavadinimas || `Nuolaida ${d.id}`} ({d.procentas}%)
-              </option>
-            ))}
-          </select>
+        <div className="border-t pt-4 space-y-4">
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Filtruoti pagal nuolaidą</h3>
+            <select
+              value={selectedDiscount}
+              onChange={(e) => setSelectedDiscount(e.target.value)}
+              className="w-full border rounded-md px-3 py-2"
+            >
+              <option value="">Visos nuolaidos</option>
+              <option value="0">Be nuolaidos</option>
+              {discounts.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.pavadinimas || `Nuolaida ${d.id}`} ({d.procentas}%)
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Filtruoti pagal autobusą</h3>
+            <select
+              value={selectedVehicle}
+              onChange={(e) => setSelectedVehicle(e.target.value)}
+              className="w-full border rounded-md px-3 py-2"
+            >
+              <option value="">Visi autobusai</option>
+              {vehicles.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Statistics Cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Sold */}
           <div className="bg-white shadow-md rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500 uppercase">Parduoti bilietai</h3>
-            <p className="text-4xl font-bold text-blue-600 mt-2">{stats.totalSold}</p>
+            <h3 className="text-xs font-medium text-gray-500 uppercase">Parduoti bilietai</h3>
+            <p className="text-3xl font-bold text-blue-600 mt-2">{stats.totalSold}</p>
           </div>
 
           {/* Total Revenue */}
           <div className="bg-white shadow-md rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500 uppercase">Iš viso pajamų</h3>
-            <p className="text-4xl font-bold text-green-600 mt-2">€{stats.totalRevenue.toFixed(2)}</p>
+            <h3 className="text-xs font-medium text-gray-500 uppercase">Iš viso pajamų</h3>
+            <p className="text-3xl font-bold text-green-600 mt-2">€{stats.totalRevenue.toFixed(2)}</p>
+          </div>
+
+          {/* Average Price */}
+          <div className="bg-white shadow-md rounded-lg p-6">
+            <h3 className="text-xs font-medium text-gray-500 uppercase">Vidutinė kaina</h3>
+            <p className="text-3xl font-bold text-purple-600 mt-2">€{stats.avgPrice.toFixed(2)}</p>
+          </div>
+
+          {/* Activation Rate */}
+          <div className="bg-white shadow-md rounded-lg p-6">
+            <h3 className="text-xs font-medium text-gray-500 uppercase">Aktyvacijos dalis</h3>
+            <p className="text-3xl font-bold text-orange-600 mt-2">{stats.activationRate}%</p>
           </div>
 
           {/* Status Breakdown */}
-          <div className="bg-white shadow-md rounded-lg p-6 md:col-span-2">
+          <div className="bg-white shadow-md rounded-lg p-6 md:col-span-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Bilietų statusas</h3>
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
