@@ -30,5 +30,6 @@ namespace Api.DTOs
     public class ValidateTicketDto
     {
         public string? TransportoPriemonesKodas { get; set; }
+        public int? NuolaidaId { get; set; }
     }
 }

@@ -45,6 +45,12 @@ namespace Api.Controllers
                 return Ok(new { valid = false, reason = "Pažymėta kitoje transporto priemonėje" });
             }
 
+            // Check if discount is specified and matches the ticket's discount
+            if (dto.NuolaidaId.HasValue && dto.NuolaidaId != ticket.NuolaidaId)
+            {
+                return Ok(new { valid = false, reason = "Nuolaida neatitinka bilieto nuolaidos" });
+            }
+
             return Ok(new
             {
                 valid = true,

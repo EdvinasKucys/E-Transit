@@ -95,22 +95,38 @@ const TicketsPage: React.FC = () => {
         const data = await ticketService.getDiscounts();
 
         // Normalize API response to a consistent shape (name, percent)
-        const normalized = data.map((d) => ({
+        const normalized = (data || []).map((d) => ({
           id: d.id,
           name: d.Pavadinimas ?? d.pavadinimas ?? d.name ?? "Nuolaida",
           percent: d.Procentas ?? d.procentas ?? d.percent ?? 0,
         }));
 
-        const discountsWithNone: NormalizedDiscount[] = [
-          { id: 0, name: "Be nuolaidos", percent: 0 },
-          ...normalized,
-        ];
+        // Deduplicate by id (keep first occurrence)
+        const byId = new Map<number, NormalizedDiscount>();
+        for (const d of normalized) {
+          if (!byId.has(d.id)) byId.set(d.id, d);
+        }
+        const unique = Array.from(byId.values());
 
-        setDiscounts(discountsWithNone);
+        // If DB already contains the "Be nuolaidos" record (id === 1), prefer it as first choice.
+        // Otherwise fall back to a local "Be nuolaidos" option with id 0.
+        let final: NormalizedDiscount[] = [];
+        const idOne = unique.find((x) => x.id === 1);
+        if (idOne) {
+          final = [idOne, ...unique.filter((x) => x.id !== 1)];
+          // ensure we don't include duplicate local placeholder
+        } else {
+          final = [{ id: 0, name: "Be nuolaidos", percent: 0 }, ...unique];
+        }
+
+        setDiscounts(final);
+        // set default selected discount to the first option (prefer id 1 when present)
+        if (final.length > 0) setSelectedDiscount(String(final[0].id));
       } catch (err) {
         console.error("Nepavyko įkelti nuolaidų:", err);
         setError("Nepavyko įkelti nuolaidų.");
         setDiscounts([{ id: 0, name: "Be nuolaidos", percent: 0 }]);
+        setSelectedDiscount("0");
       } finally {
         setLoadingDiscounts(false);
       }
