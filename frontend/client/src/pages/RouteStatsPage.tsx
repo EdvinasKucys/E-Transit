@@ -42,6 +42,19 @@ const RouteStatsPage: React.FC = () => {
     }
   };
 
+  const stopTypeLt = (tipas?: string) => {
+    switch (tipas) {
+      case "Pradzios":
+        return "Pradžios";
+      case "Tarpine":
+        return "Tarpinė";
+      case "Pabaigos":
+        return "Pabaigos";
+      default:
+        return tipas ?? "-";
+    }
+  };
+
   const calculateStats = (routes: Route[], stops: Stop[]) => {
     if (routes.length === 0) {
       setStats(null);
@@ -187,7 +200,7 @@ const RouteStatsPage: React.FC = () => {
 
     // Stops list
     csv += "\nSTOTELIŲ SĄRAŠAS\n";
-    csv += "Pavadinimas,Savivaldybė,Tipas,Koordinatės X,Koordinatės Y\n";
+    csv += "Pavadinimas,Adresas,Tipas,Koordinatės X,Koordinatės Y\n";
     stops.forEach((stop) => {
       csv += `"${stop.pavadinimas}",`;
       csv += `"${stop.adresas}",`;

@@ -4,7 +4,7 @@ import { routesService } from "../services/RoutesService";
 
 interface Tvarkarastis {
   id: number;
-  marsrutoNr: string;
+  marsrutoNr: number;   // <-- buvo string
   pavadinimas?: string;
   atvykimoLaikas: string;
   isvykimoLaikas: string;
@@ -25,7 +25,7 @@ const SchedulePage: React.FC = () => {
     pavadinimas: "",
     atvykimoLaikas: "",
     isvykimoLaikas: "",
-    dienosTipas: "DarboDiena",
+    dienosTipas: "Darbo_diena",
     transportoPriemonesKodas: ""
   });
   const [isEditing, setIsEditing] = useState(false);
@@ -42,7 +42,7 @@ const SchedulePage: React.FC = () => {
       setRoutes(routesData);
       
       // Load schedules from API
-      const response = await fetch("http://localhost:5011/api/tvarkarasciai");
+      const response = await fetch("http://localhost:5011/api/Schedule");
       if (!response.ok) throw new Error("Failed to fetch schedules");
       const data = await response.json();
       setSchedules(data);
@@ -62,15 +62,22 @@ const SchedulePage: React.FC = () => {
     
     try {
       const url = isEditing 
-        ? `http://localhost:5011/api/tvarkarasciai/${editingId}`
-        : "http://localhost:5011/api/tvarkarasciai";
+        ? `http://localhost:5011/api/Schedule/${editingId}`
+        : "http://localhost:5011/api/Schedule";
       
       const method = isEditing ? "PUT" : "POST";
       
+      const payload = {
+        ...formData,
+        marsrutoNr: Number(formData.marsrutoNr),
+      };
+      
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload), // <-- NAUDOJAM payload
       });
       
       if (!response.ok) {
@@ -88,7 +95,7 @@ const SchedulePage: React.FC = () => {
 
   const handleEdit = (schedule: Tvarkarastis) => {
     setFormData({
-      marsrutoNr: schedule.marsrutoNr,
+      marsrutoNr: String(schedule.marsrutoNr), // <-- svarbiausia
       pavadinimas: schedule.pavadinimas || "",
       atvykimoLaikas: schedule.atvykimoLaikas,
       isvykimoLaikas: schedule.isvykimoLaikas,
@@ -103,7 +110,7 @@ const SchedulePage: React.FC = () => {
     if (!window.confirm("Ar tikrai norite ištrinti šį tvarkaraštį?")) return;
     
     try {
-      const response = await fetch(`http://localhost:5011/api/tvarkarasciai/${id}`, {
+        const response = await fetch(`http://localhost:5011/api/Schedule/${id}`, {
         method: "DELETE"
       });
       
@@ -122,18 +129,18 @@ const SchedulePage: React.FC = () => {
       pavadinimas: "",
       atvykimoLaikas: "",
       isvykimoLaikas: "",
-      dienosTipas: "DarboDiena",
+      dienosTipas: "Darbo_diena",
       transportoPriemonesKodas: ""
     });
     setIsEditing(false);
     setEditingId(null);
   };
 
-  const filteredSchedules = schedules.filter(s => 
-    s.marsrutoNr.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.pavadinimas?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.transportoPriemonesKodas?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+const filteredSchedules = schedules.filter(s =>
+  String(s.marsrutoNr).toLowerCase().includes(searchTerm.toLowerCase()) ||
+  (s.pavadinimas ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+  (s.transportoPriemonesKodas ?? "").toLowerCase().includes(searchTerm.toLowerCase())
+);
 
   const formatTime = (timeString: string) => {
     try {
@@ -153,9 +160,9 @@ const SchedulePage: React.FC = () => {
 
   const getDayTypeDisplay = (type: string) => {
     switch(type) {
-      case "DarboDiena": return "Darbo diena";
+      case "Darbo_diena": return "Darbo diena";
       case "Savaitgalis": return "Savaitgalis";
-      case "SventineDiena": return "Šventinė diena";
+      case "Sventine_diena": return "Šventinė diena";
       default: return type;
     }
   };
@@ -251,9 +258,9 @@ const SchedulePage: React.FC = () => {
                   onChange={(e) => setFormData({...formData, dienosTipas: e.target.value})}
                   required
                 >
-                  <option value="DarboDiena">Darbo diena</option>
+                  <option value="Darbo_diena">Darbo diena</option>
                   <option value="Savaitgalis">Savaitgalis</option>
-                  <option value="SventineDiena">Šventinė diena</option>
+                  <option value="Sventine_diena">Šventinė diena</option>
                 </select>
               </div>
 

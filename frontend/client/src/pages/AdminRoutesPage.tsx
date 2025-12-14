@@ -135,6 +135,16 @@ const AdminRoutesPage: React.FC = () => {
       alert(err.message);
     }
   };
+  
+  const stopTypeLabel = (tipas?: string) => {
+    switch (tipas) {
+      case "Tarpine": return "Tarpinė";
+      case "Pradzios": return "Pradžios";
+      case "Pabaigos": return "Pabaigos";
+      default: return tipas ?? "-";
+    }
+  };
+
 
   const resetRouteForm = () => {
     setRouteForm({
@@ -535,7 +545,7 @@ const AdminRoutesPage: React.FC = () => {
                   Pavadinimas
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Savivaldybė
+                  Adresas
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Tipas
@@ -552,7 +562,7 @@ const AdminRoutesPage: React.FC = () => {
                     {stop.pavadinimas}
                   </td>
                   <td className="px-6 py-4 text-sm">{stop.adresas}</td>
-                  <td className="px-6 py-4 text-sm">{stop.tipas}</td>
+                  <td className="px-6 py-4 text-sm">{stopTypeLabel(stop.tipas)}</td>
                   <td className="px-6 py-4 text-sm">
                     <button
                       onClick={() => handleDeleteStop(stop.pavadinimas)}
@@ -597,7 +607,7 @@ const AdminRoutesPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Savivaldybė *
+                  Adresas *
                 </label>
                 <input
                   className="w-full border rounded px-3 py-2 text-sm"

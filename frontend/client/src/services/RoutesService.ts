@@ -32,15 +32,15 @@ export const routesService = {
   // Routes
   async getAll(search?: string): Promise<Route[]> {
     const url = search
-      ? `${API_BASE}/marsrutai?search=${encodeURIComponent(search)}`
-      : `${API_BASE}/marsrutai`;
+      ? `${API_BASE}/Routes?search=${encodeURIComponent(search)}`
+      : `${API_BASE}/Routes`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to fetch routes");
     return res.json();
   },
 
   async getOne(numeris: string): Promise<Route> {
-    const res = await fetch(`${API_BASE}/marsrutai/${encodeURIComponent(numeris)}`);
+    const res = await fetch(`${API_BASE}/Routes/${encodeURIComponent(numeris)}`);
     if (!res.ok) throw new Error(`Failed to fetch route ${numeris}`);
     return res.json();
   },
@@ -59,7 +59,7 @@ export const routesService = {
       atstumasNuoPradzios?: number;
     }>;
   }): Promise<Route> {
-    const res = await fetch(`${API_BASE}/marsrutai`, {
+    const res = await fetch(`${API_BASE}/Routes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -87,7 +87,7 @@ export const routesService = {
       }>;
     }
   ): Promise<void> {
-    const res = await fetch(`${API_BASE}/marsrutai/${encodeURIComponent(numeris)}`, {
+    const res = await fetch(`${API_BASE}/Routes/${encodeURIComponent(numeris)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -99,7 +99,7 @@ export const routesService = {
   },
 
   async delete(numeris: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/marsrutai/${encodeURIComponent(numeris)}`, {
+    const res = await fetch(`${API_BASE}/Routes/${encodeURIComponent(numeris)}`, {
       method: "DELETE",
     });
     if (!res.ok) throw new Error(`Failed to delete route ${numeris}`);
@@ -107,7 +107,7 @@ export const routesService = {
 
   // Stops
   async getAllStops(): Promise<Stop[]> {
-    const res = await fetch(`${API_BASE}/stoteles`);
+    const res = await fetch(`${API_BASE}/Stops`);
     if (!res.ok) throw new Error("Failed to fetch stops");
     return res.json();
   },
@@ -119,7 +119,7 @@ export const routesService = {
     koordinatesY: number;
     tipas: string;
   }): Promise<Stop> {
-    const res = await fetch(`${API_BASE}/stoteles`, {
+    const res = await fetch(`${API_BASE}/Stops`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -132,7 +132,7 @@ export const routesService = {
   },
 
   async deleteStop(pavadinimas: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/stoteles/${encodeURIComponent(pavadinimas)}`, {
+    const res = await fetch(`${API_BASE}/Stops/${encodeURIComponent(pavadinimas)}`, {
       method: "DELETE",
     });
     if (!res.ok) throw new Error(`Failed to delete stop ${pavadinimas}`);
