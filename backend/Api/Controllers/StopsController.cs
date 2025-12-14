@@ -31,7 +31,7 @@ namespace Api.Controllers
                     .Select(s => new StoteleDto
                     {
                         Pavadinimas = s.Pavadinimas,
-                        Savivaldybe = s.Savivaldybe,
+                        Adresas = s.Adresas,
                         KoordinatesX = s.KoordinatesX,
                         KoordinatesY = s.KoordinatesY,
                         Tipas = s.Tipas.ToString() // Convert enum to string
@@ -58,7 +58,7 @@ namespace Api.Controllers
                     .Select(s => new StoteleDto
                     {
                         Pavadinimas = s.Pavadinimas,
-                        Savivaldybe = s.Savivaldybe,
+                        Adresas = s.Adresas,
                         KoordinatesX = s.KoordinatesX,
                         KoordinatesY = s.KoordinatesY,
                         Tipas = s.Tipas.ToString() // Convert enum to string
@@ -95,7 +95,7 @@ namespace Api.Controllers
                 var stop = new Stotele
                 {
                     Pavadinimas = dto.Pavadinimas,
-                    Savivaldybe = dto.Savivaldybe,
+                    Adresas = dto.Adresas,
                     KoordinatesX = dto.KoordinatesX,
                     KoordinatesY = dto.KoordinatesY,
                     Tipas = tipas
@@ -107,7 +107,7 @@ namespace Api.Controllers
                 return CreatedAtAction(nameof(GetStop), new { pavadinimas = stop.Pavadinimas }, new StoteleDto
                 {
                     Pavadinimas = stop.Pavadinimas,
-                    Savivaldybe = stop.Savivaldybe,
+                    Adresas = stop.Adresas,
                     KoordinatesX = stop.KoordinatesX,
                     KoordinatesY = stop.KoordinatesY,
                     Tipas = stop.Tipas.ToString()
@@ -137,7 +137,7 @@ namespace Api.Controllers
                     return BadRequest($"Invalid stop type '{dto.Tipas}'. Valid values are: Pradzios, Tarpine, Pabaigos");
                 }
 
-                stop.Savivaldybe = dto.Savivaldybe;
+                stop.Adresas = dto.Adresas;
                 stop.KoordinatesX = dto.KoordinatesX;
                 stop.KoordinatesY = dto.KoordinatesY;
                 stop.Tipas = tipas;

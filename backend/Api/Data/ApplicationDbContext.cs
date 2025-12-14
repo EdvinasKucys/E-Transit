@@ -42,6 +42,36 @@ namespace Api.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<Stotele>()
+                .Property(s => s.Tipas)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<Stotele>()
+                .HasMany(s => s.MarstrutoStoteles)
+                .WithOne(ms => ms.Stotele)
+                .HasForeignKey(ms => ms.StotelesPavadinimas)
+                .HasPrincipalKey(s => s.Pavadinimas);
+            
+            modelBuilder.Entity<Tvarkarastis>()
+                .Property(t => t.DienosTipas)
+                .HasConversion<string>()
+                .HasMaxLength(50);
+
+
+            modelBuilder.Entity<Tvarkarastis>()
+                .HasOne(t => t.TransportoPriemone)
+                .WithMany()
+                .HasForeignKey(t => t.TransportoPriemonesKodas)
+                .HasPrincipalKey(tp => tp.ValstybiniaiNum);
+
+
+
+            // Configure the enum to be stored as string in database
+            modelBuilder.Entity<TransportoPriemone>()
+                .Property(v => v.KuroTipas)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
             // Configure the enum to be stored as string in database
             modelBuilder.Entity<TransportoPriemone>()
                 .Property(v => v.KuroTipas)

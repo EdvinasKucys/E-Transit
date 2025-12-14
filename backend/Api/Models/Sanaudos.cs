@@ -11,7 +11,7 @@ namespace Api.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int IdSanaudos { get; set; }
 
-        [Column("data")]
+        [Column("data", TypeName = "date")]
         public DateTime? Data { get; set; }
 
         [Column("nukeliautas_atstumas")]

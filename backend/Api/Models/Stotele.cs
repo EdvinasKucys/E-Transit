@@ -15,8 +15,8 @@ namespace Api.Models
 
         [Required]
         [MaxLength(100)]
-        [Column("savivaldybe")]
-        public string Savivaldybe { get; set; } = string.Empty;
+        [Column("adresas")]
+        public string Adresas { get; set; } = string.Empty;
 
         [Required]
         [Column("koordinates_x")]
