@@ -453,12 +453,7 @@ const AdminPage: React.FC = () => {
             {/* Other Management Sections */}
             <div className="bg-white shadow rounded-lg p-6">
               <h2 className="text-xl font-bold mb-4">Kiti valdymo skydeliai</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button
-                  className="bg-green-600 text-white px-6 py-4 rounded-lg hover:bg-green-700 transition font-medium"
-                >
-                  Bilietų valdymas
-                </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Link
                   to="/vehicles"
                   className="bg-orange-600 text-white px-6 py-4 rounded-lg hover:bg-orange-700 transition font-medium text-center"
@@ -473,34 +468,7 @@ const AdminPage: React.FC = () => {
                 </Link>
               </div>
             </div>
-
-            {/* Statistics Section */}
-            <div className="bg-white shadow rounded-lg p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold flex-1">Statistinės ataskaitos</h2>
-                <button onClick={() => setStatsRange("today")} className={statsRange === "today" ? "px-3 py-1 bg-blue-100 rounded" : "px-3 py-1 bg-gray-100 rounded"}>
-                  Šiandien
-                </button>
-                <button onClick={() => setStatsRange("week")} className={statsRange === "week" ? "px-3 py-1 bg-blue-100 rounded" : "px-3 py-1 bg-gray-100 rounded"}>
-                  Savaitė
-                </button>
-                <button onClick={() => setStatsRange("month")} className={statsRange === "month" ? "px-3 py-1 bg-blue-100 rounded" : "px-3 py-1 bg-gray-100 rounded"}>
-                  Mėnuo
-                </button>
-              </div>
-              <div className="bg-gray-50 rounded p-4 flex gap-6">
-                <div>
-                  <p className="text-xs text-slate-500">Parduoti bilietai</p>
-                  <p className="text-2xl font-bold">{stats?.sold ?? "-"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Pajamos</p>
-                  <p className="text-2xl font-bold">
-                    {stats ? `€${stats.revenue.toFixed(2)}` : "-"}
-                  </p>
-                </div>
-              </div>
-            </div>
+            
           </>
         )}
 
