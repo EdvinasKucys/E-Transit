@@ -308,8 +308,8 @@ const AdminPage: React.FC = () => {
         setDiscounts(
           data.map((d) => ({
             id: d.id,
-            name: d.Pavadinimas,
-            percent: d.procentas,
+            name: d.pavadinimas ?? d.Pavadinimas ?? "Nuolaida",
+            percent: d.Procentas ?? d.procentas ?? 0,
           }))
         );
       } catch (e) {
@@ -1036,3 +1036,4 @@ const AdminPage: React.FC = () => {
 };
 
 export default AdminPage;
+
