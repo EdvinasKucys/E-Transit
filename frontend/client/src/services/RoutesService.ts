@@ -18,6 +18,7 @@ export interface Route {
   sukurimoData: string;
   atnaujinimoData: string;
   stoteles?: RouteStop[];
+  trukme?: number; 
 }
 
 export interface Stop {
@@ -102,8 +103,24 @@ export const routesService = {
     const res = await fetch(`${API_BASE}/Routes/${encodeURIComponent(numeris)}`, {
       method: "DELETE",
     });
-    if (!res.ok) throw new Error(`Failed to delete route ${numeris}`);
+
+    if (!res.ok) {
+      let data: any;
+
+      try {
+        data = await res.json(); // ProblemDetails
+      } catch {
+        const t = await res.text();
+        throw new Error(t || `Nepavyko ištrinti maršruto ${numeris}`);
+      }
+
+      const message = data?.message || data?.title || "Klaida";
+      const details = data?.details || data?.detail || "";
+
+      throw new Error(details ? `${message}\n\n${details}` : message);
+    }
   },
+
 
   // Stops
   async getAllStops(): Promise<Stop[]> {
@@ -135,6 +152,21 @@ export const routesService = {
     const res = await fetch(`${API_BASE}/Stops/${encodeURIComponent(pavadinimas)}`, {
       method: "DELETE",
     });
-    if (!res.ok) throw new Error(`Failed to delete stop ${pavadinimas}`);
+    
+    if (!res.ok) {
+      let data: any;
+
+      try {
+        data = await res.json();  // čia gausi ProblemDetails
+      } catch {
+        const t = await res.text();
+        throw new Error(t || `Nepavyko ištrinti stotelės ${pavadinimas}`);
+      }
+
+      const message = data?.message || data?.title || "Klaida";
+      const details = data?.details || data?.detail || "";
+
+      throw new Error(details ? `${message}\n\n${details}` : message);
+    }
   },
 };

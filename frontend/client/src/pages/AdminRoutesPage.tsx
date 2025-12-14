@@ -128,13 +128,18 @@ const AdminRoutesPage: React.FC = () => {
 
   const handleDeleteRoute = async (numeris: string) => {
     if (!window.confirm(`Ar tikrai norite ištrinti maršrutą ${numeris}?`)) return;
+
     try {
-      await routesService.delete(numeris);
-      loadRoutes();
+      await routesService.delete(numeris);   
+      await loadRoutes();                   
+      alert("Maršrutas sėkmingai ištrintas!");
     } catch (err: any) {
-      alert(err.message);
+      const errorMessage = err?.message || "Nepavyko ištrinti maršruto";
+      alert(errorMessage);
+      console.error("Delete error:", err);
     }
   };
+
   
   const stopTypeLabel = (tipas?: string) => {
     switch (tipas) {
@@ -206,13 +211,19 @@ const AdminRoutesPage: React.FC = () => {
   const handleDeleteStop = async (pavadinimas: string) => {
     if (!window.confirm(`Ar tikrai norite ištrinti stotelę "${pavadinimas}"?`))
       return;
+    
     try {
       await routesService.deleteStop(pavadinimas);
-      loadStops();
+      await loadStops();
+      alert(`Stotelė "${pavadinimas}" sėkmingai ištrinta!`); // Sėkmės pranešimas
     } catch (err: any) {
-      alert(err.message);
+      // Parodome gražų error pranešimą lietuviškai
+      const errorMessage = err?.message || "Nepavyko ištrinti stotelės";
+      alert(errorMessage);
+      console.error("Delete stop error:", err);
     }
   };
+
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
