@@ -366,12 +366,6 @@ export default function DriverPage() {
                                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                                       Stotelė
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                                      Atvykimo laikas
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
-                                      Išvykimo laikas
-                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-slate-200">
@@ -384,12 +378,6 @@ export default function DriverPage() {
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900">
                                           {stop.stotelesPavadinimas}
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
-                                          {stop.atvykimoLaikas || "-"}
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
-                                          {stop.isvykimoLaikas || "-"}
                                         </td>
                                       </tr>
                                     ))}

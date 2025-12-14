@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { routesService } from "../services/RoutesService";
+import { vehicleService, Vehicle } from "../services/vehicleService";
 
 interface Tvarkarastis {
   id: number;
@@ -16,6 +17,7 @@ const SchedulePage: React.FC = () => {
   const navigate = useNavigate();
   const [schedules, setSchedules] = useState<Tvarkarastis[]>([]);
   const [routes, setRoutes] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -40,6 +42,10 @@ const SchedulePage: React.FC = () => {
       // Load routes for dropdown
       const routesData = await routesService.getAll();
       setRoutes(routesData);
+      
+      // Load vehicles for dropdown
+      const vehiclesData = await vehicleService.getAllVehicles();
+      setVehicles(vehiclesData);
       
       // Load schedules from API
       const response = await fetch("http://localhost:5011/api/Schedule");
@@ -266,13 +272,18 @@ const filteredSchedules = schedules.filter(s =>
 
               <div>
                 <label className="block text-sm font-medium mb-1">Transporto priemonė</label>
-                <input
-                  type="text"
+                <select
                   className="w-full border rounded px-3 py-2 text-sm"
                   value={formData.transportoPriemonesKodas}
                   onChange={(e) => setFormData({...formData, transportoPriemonesKodas: e.target.value})}
-                  placeholder="pvz. ABC123"
-                />
+                >
+                  <option value="">Pasirinkite transporto priemonę</option>
+                  {vehicles.map(vehicle => (
+                    <option key={vehicle.valstybiniaiNum} value={vehicle.valstybiniaiNum}>
+                      {vehicle.valstybiniaiNum} ({vehicle.vietuSk} vietos)
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex gap-2">
