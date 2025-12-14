@@ -42,12 +42,14 @@ export const ticketService = {
   },
 
   // 2) PASSENGER: buy a ticket
-  async purchase(data: { naudotojasId: number; nuolaidaId?: number | null }) {
+  async purchase(data: { naudotojasId: number; nuolaidaId?: number | null; paymentMethod?: string; paymentDetails?: any }) {
     const res = await axios.post<TicketDto>(
       `${API_BASE}/api/passenger/tickets/purchase`,
       {
-        naudotojasId: data.naudotojasId, // Send ID
+        naudotojasId: data.naudotojasId,
         nuolaidaId: data.nuolaidaId ?? null,
+        paymentMethod: data.paymentMethod,
+        paymentDetails: data.paymentDetails,
       }
     );
     return res.data;

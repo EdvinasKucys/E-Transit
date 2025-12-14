@@ -14,7 +14,6 @@ namespace Api.Controllers
     {
         private readonly ApplicationDbContext _context;
         private const int ValidMinutes = 30;
-        private const decimal BasePrice = 1.00m;
 
         public PassengerTicketsController(ApplicationDbContext context)
         {
@@ -25,7 +24,11 @@ namespace Api.Controllers
         [HttpPost("purchase")]
         public async Task<ActionResult<BilietasDto>> Purchase(PurchaseTicketDto dto)
         {
-            decimal finalPrice = BasePrice;
+            // Read current ticket base price from DB (id=1). Fallback to 1.00 if missing.
+            var priceEntity = await _context.TicketPrices.FirstOrDefaultAsync(p => p.Id == 1);
+            decimal basePrice = priceEntity?.Kaina ?? 1.00m;
+
+            decimal finalPrice = basePrice;
             int? discountId = dto.NuolaidaId;
 
             if (discountId.HasValue)
@@ -33,7 +36,7 @@ namespace Api.Controllers
                 var discount = await _context.Nuolaidos.FindAsync(discountId.Value);
                 if (discount != null)
                 {
-                    finalPrice = BasePrice * (100 - discount.Procentas) / 100m;
+                    finalPrice = basePrice * (100 - discount.Procentas) / 100m;
                 }
                 else
                 {
@@ -46,7 +49,7 @@ namespace Api.Controllers
                 Id = Guid.NewGuid(),
                 NaudotojasId = dto.NaudotojasId,
                 PirkimoData = DateTime.UtcNow,
-                BazineKaina = BasePrice,
+                BazineKaina = basePrice,
                 GalutineKaina = finalPrice,
                 NuolaidaId = discountId,
                 Statusas = BilietoStatusas.Nupirktas
@@ -76,6 +79,16 @@ namespace Api.Controllers
 
             if (ticket.Statusas != BilietoStatusas.Nupirktas)
                 return BadRequest("Bilietas jau pažymėtas arba negaliojantis.");
+
+            // Validate provided vehicle code exists in the system
+            if (string.IsNullOrWhiteSpace(dto.TransportoPriemonesKodas))
+                return BadRequest("Transporto priemonės kodas privalomas.");
+
+            var vehicleExists = await _context.TransportoPriemones
+                .AnyAsync(v => v.ValstybiniaiNum == dto.TransportoPriemonesKodas);
+
+            if (!vehicleExists)
+                return BadRequest("Transporto priemonė nerasta.");
 
             ticket.AktyvavimoData = DateTime.UtcNow;
             ticket.TransportoPriemonesKodas = dto.TransportoPriemonesKodas;
@@ -122,6 +135,9 @@ namespace Api.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<BilietasDto>>> GetMyTickets([FromQuery] int? userId)
         {
+            // Expire old activated tickets before returning list
+            await ExpireOldActivatedTicketsAsync();
+
             var query = _context.Bilietai.AsQueryable();
 
             if (userId.HasValue)
@@ -152,6 +168,23 @@ namespace Api.Controllers
                 .ToListAsync();
 
             return Ok(list);
+        }
+
+        private async Task ExpireOldActivatedTicketsAsync()
+        {
+            var threshold = DateTime.UtcNow.AddMinutes(-ValidMinutes);
+            var toExpire = await _context.Bilietai
+                .Where(b => b.Statusas == BilietoStatusas.Aktyvuotas && b.AktyvavimoData != null && b.AktyvavimoData <= threshold)
+                .ToListAsync();
+
+            if (toExpire.Any())
+            {
+                foreach (var t in toExpire)
+                {
+                    t.Statusas = BilietoStatusas.Pasibaigęs;
+                }
+                await _context.SaveChangesAsync();
+            }
         }
 
 

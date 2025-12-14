@@ -20,6 +20,9 @@ namespace Api.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<BilietasDto>>> GetAll()
         {
+            // Expire old activated tickets before returning list
+            await ExpireOldActivatedTicketsAsync();
+
             var tickets = await _context.Bilietai
                 .Include(b => b.NaudotojasInfo)
                 .OrderByDescending(b => b.PirkimoData)
@@ -39,6 +42,23 @@ namespace Api.Controllers
                 .ToListAsync();
 
             return Ok(tickets);
+        }
+
+        private async Task ExpireOldActivatedTicketsAsync()
+        {
+            var threshold = DateTime.UtcNow.AddMinutes(-30);
+            var toExpire = await _context.Bilietai
+                .Where(b => b.Statusas == Api.Enums.BilietoStatusas.Aktyvuotas && b.AktyvavimoData != null && b.AktyvavimoData <= threshold)
+                .ToListAsync();
+
+            if (toExpire.Any())
+            {
+                foreach (var t in toExpire)
+                {
+                    t.Statusas = Api.Enums.BilietoStatusas.Pasibaigęs;
+                }
+                await _context.SaveChangesAsync();
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ticketService } from "../services/TicketService";
+import { API_CONFIG } from "../api/apiClient";
 import { useAuth } from "../context/AuthContext";
 
 interface DiscountDto {
@@ -33,7 +34,13 @@ const TicketsPage: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<string>("kortele");
   const [ticketId, setTicketId] = useState<string>("");
   const [vehicleCode, setVehicleCode] = useState<string>("");
+  const [vehicles, setVehicles] = useState<string[]>([]);
   const [cashCode, setCashCode] = useState<string>("");
+  const [cardNumber, setCardNumber] = useState<string>("");
+  const [cardExpiry, setCardExpiry] = useState<string>("");
+  const [cardCvv, setCardCvv] = useState<string>("");
+  const [paypalEmail, setPaypalEmail] = useState<string>("");
+  const [paypalPassword, setPaypalPassword] = useState<string>("");
 
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -62,6 +69,23 @@ const TicketsPage: React.FC = () => {
         fetchTickets();
     }
   }, [user]); // Dependency on user ensures it runs after login loads
+
+  // Load available vehicles for dropdown
+  useEffect(() => {
+    const loadVehicles = async () => {
+      try {
+        const res = await fetch(`${API_CONFIG.baseURL}/vehicles`);
+        if (!res.ok) return;
+        const data = await res.json();
+        // normalize plates (handle different casing)
+        const plates = data.map((v: any) => v.ValstybiniaiNum ?? v.valstybiniaiNum ?? v.valstybiniai_num ?? "").filter((p: string) => !!p);
+        setVehicles(plates);
+      } catch (e) {
+        console.error("Failed to load vehicles", e);
+      }
+    };
+    loadVehicles();
+  }, []);
 
   // Load discounts from database
   useEffect(() => {
@@ -103,11 +127,36 @@ const TicketsPage: React.FC = () => {
         return;
     }
 
+    // Validate payment fields depending on chosen method
+    if (paymentMethod === "kortele") {
+      if (!cardNumber.trim() || !cardExpiry.trim() || !cardCvv.trim()) {
+        setError("Įveskite kortelės numerį, galiojimo datą ir CVV.");
+        return;
+      }
+    }
+
+    if (paymentMethod === "paypal") {
+      if (!paypalEmail.trim() || !paypalPassword.trim()) {
+        setError("Įveskite PayPal el. paštą ir slaptažodį.");
+        return;
+      }
+    }
+
+    if (paymentMethod === "grynais") {
+      if (!cashCode.trim()) {
+        setError("Įveskite arba sugeneruokite bilieto kodą grynais.");
+        return;
+      }
+    }
+
     try {
       const newTicket = await ticketService.purchase({
-        // CORRECTED: Send ID (int) instead of Name (string)
-        naudotojasId: user.idNaudotojas, 
+        naudotojasId: user.idNaudotojas,
         nuolaidaId: parseInt(selectedDiscount) || null,
+        paymentMethod,
+        paymentDetails: paymentMethod === "kortele" ? { cardNumber, cardExpiry, cardCvv } :
+                         paymentMethod === "paypal" ? { paypalEmail } :
+                         paymentMethod === "grynais" ? { cashCode } : undefined
       });
 
       alert(`Bilietas sėkmingai nupirktas!\nID: ${newTicket.id}`);
@@ -217,10 +266,10 @@ const TicketsPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700">
                 Kortelės numeris
               </label>
-              <input type="text" className="w-full border rounded-md px-3 py-2" placeholder="1234 5678 9012 3456" />
+              <input type="text" className="w-full border rounded-md px-3 py-2" placeholder="1234 5678 9012 3456" value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} required />
               <div className="flex space-x-2">
-                <input type="text" className="w-1/2 border rounded-md px-3 py-2" placeholder="MM/YY" />
-                <input type="text" className="w-1/2 border rounded-md px-3 py-2" placeholder="CVV" />
+                <input type="text" className="w-1/2 border rounded-md px-3 py-2" placeholder="MM/YY" value={cardExpiry} onChange={(e) => setCardExpiry(e.target.value)} required />
+                <input type="text" className="w-1/2 border rounded-md px-3 py-2" placeholder="CVV" value={cardCvv} onChange={(e) => setCardCvv(e.target.value)} required />
               </div>
             </div>
           )}
@@ -230,8 +279,8 @@ const TicketsPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700">
                 PayPal el. paštas
               </label>
-              <input type="email" className="w-full border rounded-md px-3 py-2" placeholder="you@example.com" />
-              <input type="text" className="w-full border rounded-md px-3 py-2" placeholder="Password" />
+              <input type="email" className="w-full border rounded-md px-3 py-2" placeholder="you@example.com" value={paypalEmail} onChange={(e) => setPaypalEmail(e.target.value)} required />
+              <input type="password" className="w-full border rounded-md px-3 py-2" placeholder="Password" value={paypalPassword} onChange={(e) => setPaypalPassword(e.target.value)} required />
             </div>
           )}
 
@@ -306,13 +355,28 @@ const TicketsPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700">
               Transporto priemonės kodas
             </label>
-            <input
-              type="text"
-              value={vehicleCode}
-              onChange={(e) => setVehicleCode(e.target.value)}
-              className="w-full border rounded-md px-3 py-2"
-              placeholder="Pvz. ABC123"
-            />
+            {vehicles.length > 0 ? (
+              <select
+                value={vehicleCode}
+                onChange={(e) => setVehicleCode(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-- Pasirinkite transporto priemonę --</option>
+                {vehicles.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={vehicleCode}
+                onChange={(e) => setVehicleCode(e.target.value)}
+                className="w-full border rounded-md px-3 py-2"
+                placeholder="Pvz. ABC123"
+              />
+            )}
           </div>
 
           <button
