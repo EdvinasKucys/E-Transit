@@ -1046,13 +1046,12 @@ const AdminPage: React.FC = () => {
                 >
                   Maršrutų statistika
                 </Link>
-                <button
+                <Link
+                  to="/admin/ticket-stats"
                   className="bg-green-600 text-white px-6 py-4 rounded-xl hover:bg-green-700 transition-colors text-center font-medium shadow-sm"
-                  disabled
                 >
                   Bilietų statistika
-                  <span className="block text-xs mt-1 opacity-75">(Netrukus)</span>
-                </button>
+                </Link>
                 <Link
                   to="/admin/fuel-stats"
                   className="bg-orange-600 text-white px-6 py-4 rounded-xl hover:bg-orange-700 transition-colors text-center font-medium shadow-sm"

@@ -14,6 +14,7 @@ import RouteOptimizationPage from "./pages/RouteOptimizationPage";
 import RouteStatsPage from "./pages/RouteStatsPage";
 import SchedulePage from './pages/SchedulePage';
 import FuelStatisticsPage from './pages/FuelStatisticsPage';
+import TicketStatsPage from "./pages/TicketStatsPage";
 
 function App() {
   return (
@@ -40,7 +41,7 @@ function App() {
           <Route path="/admin/routes/schedules" element={<SchedulePage />} />
           <Route path="/admin/fuel-stats" element={<FuelStatisticsPage />} />
           
-
+          <Route path="/admin/ticket-stats" element={<TicketStatsPage />} />
           {/* Fallback */}
           <Route path="*" element={<LoginPage />} />
         </Routes>
