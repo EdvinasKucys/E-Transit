@@ -3,15 +3,37 @@ import { useNavigate, Link } from "react-router-dom";
 import { ticketService } from "../services/TicketService";
 import { useAuth } from "../context/AuthContext";
 
+interface DiscountDto {
+  id: number;
+  // API may return different casing (Pavadinimas / pavadinimas / name)
+  Pavadinimas?: string;
+  pavadinimas?: string;
+  name?: string;
+  // percent might be Procentas / procentas / percent
+  Procentas?: number;
+  procentas?: number;
+  percent?: number;
+}
+
+interface NormalizedDiscount {
+  id: number;
+  name: string;
+  percent: number;
+}
+
 const TicketsPage: React.FC = () => {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [discounts, setDiscounts] = useState<NormalizedDiscount[]>([]);
+  const [loadingDiscounts, setLoadingDiscounts] = useState(true);
+
   const [selectedDiscount, setSelectedDiscount] = useState<string>("0");
   const [paymentMethod, setPaymentMethod] = useState<string>("kortele");
   const [ticketId, setTicketId] = useState<string>("");
   const [vehicleCode, setVehicleCode] = useState<string>("");
+  const [cashCode, setCashCode] = useState<string>("");
 
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -19,9 +41,13 @@ const TicketsPage: React.FC = () => {
   // Load existing tickets
   useEffect(() => {
     const fetchTickets = async () => {
+      // Ensure we have a user ID before fetching
+      if (!user?.idNaudotojas) return; 
+
       try {
         setLoading(true);
-        const data = await ticketService.getPassengerTickets();
+        // CORRECTED: Pass the User ID to filter tickets
+        const data = await ticketService.getPassengerTickets(user.idNaudotojas);
         setTickets(data);
       } catch (err) {
         console.error(err);
@@ -30,20 +56,63 @@ const TicketsPage: React.FC = () => {
         setLoading(false);
       }
     };
-    fetchTickets();
+    
+    // Only fetch when 'user' is available
+    if (user) { 
+        fetchTickets();
+    }
+  }, [user]); // Dependency on user ensures it runs after login loads
+
+  // Load discounts from database
+  useEffect(() => {
+    const fetchDiscounts = async () => {
+      try {
+        setLoadingDiscounts(true);
+        const data = await ticketService.getDiscounts();
+
+        // Normalize API response to a consistent shape (name, percent)
+        const normalized = data.map((d) => ({
+          id: d.id,
+          name: d.Pavadinimas ?? d.pavadinimas ?? d.name ?? "Nuolaida",
+          percent: d.Procentas ?? d.procentas ?? d.percent ?? 0,
+        }));
+
+        const discountsWithNone: NormalizedDiscount[] = [
+          { id: 0, name: "Be nuolaidos", percent: 0 },
+          ...normalized,
+        ];
+
+        setDiscounts(discountsWithNone);
+      } catch (err) {
+        console.error("Nepavyko įkelti nuolaidų:", err);
+        setError("Nepavyko įkelti nuolaidų.");
+        setDiscounts([{ id: 0, name: "Be nuolaidos", percent: 0 }]);
+      } finally {
+        setLoadingDiscounts(false);
+      }
+    };
+    fetchDiscounts();
   }, []);
 
   // Buy a new ticket
   const handleBuyTicket = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?. idNaudotojas
+    ) {
+        setError("Nepavyko nustatyti vartotojo ID.");
+        return;
+    }
+
     try {
       const newTicket = await ticketService.purchase({
-        naudotojas: user?.name ?? null,
+        // CORRECTED: Send ID (int) instead of Name (string)
+        naudotojasId: user.idNaudotojas, 
         nuolaidaId: parseInt(selectedDiscount) || null,
       });
 
       alert(`Bilietas sėkmingai nupirktas!\nID: ${newTicket.id}`);
-      setTickets((prev) => [...prev, newTicket]);
+      setTickets((prev) => [newTicket, ...prev]); // Add new ticket to top of list
+      setError(null);
     } catch (err) {
       console.error(err);
       setError("Nepavyko nupirkti bilieto.");
@@ -60,6 +129,13 @@ const TicketsPage: React.FC = () => {
       alert("Bilietas sėkmingai pažymėtas!");
       setTicketId("");
       setVehicleCode("");
+      setError(null);
+      
+      // Optional: Refresh tickets to see updated status
+      if (user?.idNaudotojas) {
+         const updated = await ticketService.getPassengerTickets(user.idNaudotojas);
+         setTickets(updated);
+      }
     } catch (err) {
       console.error(err);
       setError("Nepavyko pažymėti bilieto.");
@@ -106,11 +182,17 @@ const TicketsPage: React.FC = () => {
               value={selectedDiscount}
               onChange={(e) => setSelectedDiscount(e.target.value)}
               className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+              disabled={loadingDiscounts}
             >
-              <option value="0">Be nuolaidos</option>
-              <option value="1">Moksleivio (50%)</option>
-              <option value="2">Studento (30%)</option>
-              <option value="3">Senjoro (20%)</option>
+              {loadingDiscounts ? (
+                <option>Kraunama...</option>
+              ) : (
+                discounts.map((discount) => (
+                  <option key={discount.id} value={discount.id}>
+                    {discount.name} ({discount.percent}%)
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -128,61 +210,74 @@ const TicketsPage: React.FC = () => {
               <option value="grynais">Grynais</option>
             </select>
           </div>
-           
-           {/* Payment‑method specific form */}
-            {paymentMethod === "kortele" && (
-              <div className="space-y-2 mt-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Kortelės numeris
-                </label>
+          
+          {/* Payment Forms */}
+          {paymentMethod === "kortele" && (
+            <div className="space-y-2 mt-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Kortelės numeris
+              </label>
+              <input type="text" className="w-full border rounded-md px-3 py-2" placeholder="1234 5678 9012 3456" />
+              <div className="flex space-x-2">
+                <input type="text" className="w-1/2 border rounded-md px-3 py-2" placeholder="MM/YY" />
+                <input type="text" className="w-1/2 border rounded-md px-3 py-2" placeholder="CVV" />
+              </div>
+            </div>
+          )}
+
+          {paymentMethod === "paypal" && (
+            <div className="space-y-2 mt-2">
+              <label className="block text-sm font-medium text-gray-700">
+                PayPal el. paštas
+              </label>
+              <input type="email" className="w-full border rounded-md px-3 py-2" placeholder="you@example.com" />
+              <input type="text" className="w-full border rounded-md px-3 py-2" placeholder="Password" />
+            </div>
+          )}
+
+          {paymentMethod === "grynais" && (
+            <div className="mt-2 space-y-2">
+              <p className="text-sm text-gray-600">Apmokėjimas grynais vairuotojui transporto priemonėje.</p>
+              <div className="flex gap-2">
                 <input
                   type="text"
                   className="w-full border rounded-md px-3 py-2"
-                  placeholder="1234 5678 9012 3456"
+                  placeholder="Bilieto kodas arba generuoti naują"
+                  value={cashCode}
+                  onChange={(e) => setCashCode(e.target.value)}
                 />
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    className="w-1/2 border rounded-md px-3 py-2"
-                    placeholder="MM/YY"
-                  />
-                  <input
-                    type="text"
-                    className="w-1/2 border rounded-md px-3 py-2"
-                    placeholder="CVV"
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // generate 8-char alphanumeric code
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                    let code = '';
+                    for (let i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+                    setCashCode(code);
+                  }}
+                  className="bg-gray-200 hover:bg-gray-300 text-sm px-3 py-2 rounded-md"
+                >
+                  Generuoti
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!cashCode) return;
+                    try { navigator.clipboard.writeText(cashCode); alert('Kodas nukopijuotas'); } catch { }
+                  }}
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded-md"
+                >
+                  Kopijuoti
+                </button>
               </div>
-            )}
-
-            {paymentMethod === "paypal" && (
-              <div className="space-y-2 mt-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  PayPal el. paštas
-                </label>
-                <input
-                  type="email"
-                  className="w-full border rounded-md px-3 py-2"
-                  placeholder="you@example.com"
-                />
-                  <input
-                    type="text"
-                    className="w-full border rounded-md px-3 py-2"
-                    placeholder="Password"
-                  />
-              </div>
-              
-            )}
-
-            {paymentMethod === "grynais" && (
-              <p className="mt-2 text-sm text-gray-600">
-                Apmokėjimas grynais vairuotojui transporto priemonėje.
-              </p>
-            )}
+              <p className="text-xs text-gray-500">Pateikite šį kodą vairuotojui kaip įrodymą apie apmokėjimą.</p>
+            </div>
+          )}
 
           <button
             type="submit"
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition duration-200"
+            disabled={loadingDiscounts}
           >
             Pirkti bilietą
           </button>
@@ -238,15 +333,9 @@ const TicketsPage: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                  ID
-                </th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                  Kaina
-                </th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                  Statusas
-                </th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Kaina</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Statusas</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -255,7 +344,10 @@ const TicketsPage: React.FC = () => {
                   <td className="px-4 py-2">{t.id}</td>
                   <td className="px-4 py-2">{t.galutineKaina} €</td>
                   <td className="px-4 py-2">
-                    {t.statusas === 1 ? "Aktyvus" : "Neaktyvus"}
+                    {t.statusas === 1 ? "Nupirktas" :
+                     t.statusas === 2 ? "Aktyvuotas" :
+                     t.statusas === 3 ? "Pasibaigęs" :
+                     "Nežinomas"}
                   </td>
                 </tr>
               ))}

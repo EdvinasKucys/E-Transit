@@ -2,6 +2,7 @@ using Api.Data;
 using Api.DTOs;
 using Api.Enums;
 using Api.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -43,7 +44,7 @@ namespace Api.Controllers
             var ticket = new Bilietas
             {
                 Id = Guid.NewGuid(),
-                Naudotojas = dto.Naudotojas,
+                NaudotojasId = dto.NaudotojasId,
                 PirkimoData = DateTime.UtcNow,
                 BazineKaina = BasePrice,
                 GalutineKaina = finalPrice,
@@ -57,7 +58,7 @@ namespace Api.Controllers
             return CreatedAtAction(nameof(GetStatus), new { id = ticket.Id }, new BilietasDto
             {
                 Id = ticket.Id,
-                Naudotojas = ticket.Naudotojas,
+                NaudotojasId = ticket.NaudotojasId,
                 PirkimoData = ticket.PirkimoData,
                 BazineKaina = ticket.BazineKaina,
                 GalutineKaina = ticket.GalutineKaina,
@@ -116,19 +117,30 @@ namespace Api.Controllers
         }
 
         // optional: GET api/passenger/tickets?user=...
+        // GET api/passenger/tickets
+        // GET api/passenger/tickets
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<BilietasDto>>> GetMyTickets([FromQuery] string? user)
+        public async Task<ActionResult<IEnumerable<BilietasDto>>> GetMyTickets([FromQuery] int? userId)
         {
             var query = _context.Bilietai.AsQueryable();
-            if (!string.IsNullOrWhiteSpace(user))
-                query = query.Where(b => b.Naudotojas == user);
+
+            if (userId.HasValue)
+            {
+                // 1. Filter directly by ID (Fast & Correct)
+                query = query.Where(b => b.NaudotojasId == userId.Value);
+            }
 
             var list = await query
+                .Include(b => b.NaudotojasInfo) // Join to get the name string
                 .OrderByDescending(b => b.PirkimoData)
                 .Select(b => new BilietasDto
                 {
                     Id = b.Id,
-                    Naudotojas = b.Naudotojas,
+                    NaudotojasId = b.NaudotojasId,
+                    
+                    // Map the name for display purposes
+                    Naudotojas = b.NaudotojasInfo != null ? b.NaudotojasInfo.Slapyvardis : "Nežinomas",
+
                     PirkimoData = b.PirkimoData,
                     AktyvavimoData = b.AktyvavimoData,
                     BazineKaina = b.BazineKaina,
@@ -141,5 +153,7 @@ namespace Api.Controllers
 
             return Ok(list);
         }
+
+
     }
 }

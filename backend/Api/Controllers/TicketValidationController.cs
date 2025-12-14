@@ -50,7 +50,7 @@ namespace Api.Controllers
                 valid = true,
                 expiresAt = expires,
                 ticketId = ticket.Id,
-                user = ticket.Naudotojas,
+                user = ticket.NaudotojasId,
                 discountId = ticket.NuolaidaId
             });
         }

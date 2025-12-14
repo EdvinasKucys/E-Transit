@@ -4,7 +4,7 @@ const baseURL = `${API_CONFIG.baseURL}/discounts`;
 
 export interface Discount {
   id: number;
-  pavadinimas: string;
+  Pavadinimas: string;
   procentas: number;
 }
 

@@ -21,11 +21,13 @@ namespace Api.Controllers
         public async Task<ActionResult<IEnumerable<BilietasDto>>> GetAll()
         {
             var tickets = await _context.Bilietai
+                .Include(b => b.NaudotojasInfo)
                 .OrderByDescending(b => b.PirkimoData)
                 .Select(b => new BilietasDto
                 {
                     Id = b.Id,
-                    Naudotojas = b.Naudotojas,
+                    NaudotojasId = b.NaudotojasId,
+                    Naudotojas = b.NaudotojasInfo != null ? b.NaudotojasInfo.Slapyvardis : "Nežinomas" ,
                     PirkimoData = b.PirkimoData,
                     AktyvavimoData = b.AktyvavimoData,
                     BazineKaina = b.BazineKaina,

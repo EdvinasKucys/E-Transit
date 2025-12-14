@@ -84,7 +84,7 @@ const AdminPage: React.FC = () => {
   };
 
   const handleSignOut = () => {
-    signOut();
+    //signOut();
     navigate("/login");
   };
 
@@ -253,7 +253,7 @@ const AdminPage: React.FC = () => {
             d.id === updated.id
               ? {
                   id: updated.id,
-                  name: updated.pavadinimas,
+                  name: updated.Pavadinimas,
                   percent: updated.procentas,
                 }
               : d
@@ -269,7 +269,7 @@ const AdminPage: React.FC = () => {
           ...prev,
           {
             id: created.id,
-            name: created.pavadinimas,
+            name: created.Pavadinimas,
             percent: created.procentas,
           },
         ]);
@@ -308,7 +308,7 @@ const AdminPage: React.FC = () => {
         setDiscounts(
           data.map((d) => ({
             id: d.id,
-            name: d.pavadinimas,
+            name: d.Pavadinimas,
             percent: d.procentas,
           }))
         );

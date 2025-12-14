@@ -11,9 +11,8 @@ namespace Api.Models
         [Column("id")]
         public Guid Id { get; set; }
 
-        [MaxLength(200)]
-        [Column("naudotojas")]
-        public string? Naudotojas { get; set; }
+        [Column("fk_naudotojas_id")]
+        public int? NaudotojasId { get; set; }
 
         [Required]
         [Column("pirkimo_data")]
@@ -43,5 +42,8 @@ namespace Api.Models
         [Required]
         [Column("statusas")]
         public BilietoStatusas Statusas { get; set; }
+
+        [ForeignKey(nameof(NaudotojasId))]
+        public virtual Naudotojas? NaudotojasInfo { get; set; } 
     }
 }

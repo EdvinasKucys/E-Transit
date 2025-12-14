@@ -21,22 +21,32 @@ export interface TicketPrice {
   kaina: number;
 }
 
+// Use YOUR exact DTO name + casing
+export interface NuolaidaDto {
+  id: number;
+  Pavadinimas: string;
+  Procentas: number;
+}
+
+
+
+
 export const ticketService = {
   // 1) PASSENGER: get their tickets
-  async getPassengerTickets(user?: string) {
+  async getPassengerTickets(userId?: number) { 
     const res = await axios.get<TicketDto[]>(
       `${API_BASE}/api/passenger/tickets`,
-      user ? { params: { user } } : undefined
+      userId ? { params: { userId } } : undefined // param name must match C# argument
     );
     return res.data;
   },
 
   // 2) PASSENGER: buy a ticket
-  async purchase(data: { naudotojas?: string | null; nuolaidaId?: number | null }) {
+  async purchase(data: { naudotojasId: number; nuolaidaId?: number | null }) {
     const res = await axios.post<TicketDto>(
       `${API_BASE}/api/passenger/tickets/purchase`,
       {
-        naudotojas: data.naudotojas ?? null,
+        naudotojasId: data.naudotojasId, // Send ID
         nuolaidaId: data.nuolaidaId ?? null,
       }
     );
@@ -70,4 +80,9 @@ export const ticketService = {
     const res = await axios.put<TicketPrice>(`${API_BASE}/api/ticket-price`, data);
     return res.data;
   },
+  // 7)get all discounts
+  async getDiscounts(): Promise<NuolaidaDto[]> {
+    const res = await axios.get<NuolaidaDto[]>(`${API_BASE}/api/discounts`);
+    return res.data;
+  }
 };
