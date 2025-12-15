@@ -409,7 +409,7 @@ const AdminPage: React.FC = () => {
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              Bilietų kainos
+              Bilietų kaina
             </button>
             <button
               onClick={() => setActiveTab("statistics")}
@@ -878,7 +878,6 @@ const AdminPage: React.FC = () => {
     <div className="flex items-center justify-between">
       <div>
         <h2 className="text-xl font-semibold text-gray-800">Bilieto kaina</h2>
-        <p className="text-sm text-gray-500">Vienintelio bilieto kaina.</p>
       </div>
 
       {!editingPrice ? (

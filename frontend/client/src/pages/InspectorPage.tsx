@@ -39,9 +39,19 @@ const InspectorPage: React.FC = () => {
     setLoading(true);
     try {
       // 👇 THIS is the actual call to your controller
+      // Map selected discount: if it's "Be nuolaidos" (or 0%), treat as no discount (null)
+      let mappedNuolaidaId: number | null = null;
+      if (discountType) {
+        const parsed = parseInt(discountType);
+        const selected = discounts.find((d) => d.id === parsed);
+        const name = selected?.pavadinimas?.toLowerCase() ?? "";
+        const isNoDiscount = name.includes("be nuolaidos") || selected?.procentas === 0;
+        mappedNuolaidaId = isNoDiscount ? null : parsed;
+      }
+
       const res = await ticketValidationService.validate(ticketId.trim(), {
         transportoPriemonesKodas: vehicleCode.trim() || null,
-        nuolaidaId: discountType ? parseInt(discountType) : null,
+        nuolaidaId: mappedNuolaidaId,
       });
 
       // depending on what your controller returns, adjust these names
@@ -64,13 +74,10 @@ const InspectorPage: React.FC = () => {
         const vRes = await fetch(`${API_CONFIG.baseURL}/vehicles`);
         if (vRes.ok) {
           const vData = await vRes.json();
-          // normalize fields: use ValstybiniaiNum from backend VehicleDto and build a display label
+          // normalize fields: use only the transport code/plate
           const norm = (vData || []).map((v: any) => {
             const plate = v.ValstybiniaiNum ?? v.valstybiniaiNum ?? v.valstybinisNum ?? v.kodas ?? v.code ?? v.kodas;
-            const route = v.MarsrutasPavadinimas ?? v.marsrutasPavadinimas ?? v.route ?? null;
-            const driverName = (v.VairuotojasVardas || v.VairuotojasPavarde) ? `${v.VairuotojasVardas ?? ''} ${v.VairuotojasPavarde ?? ''}`.trim() : null;
-            const display = route ? `${plate} — ${route}` : driverName ? `${plate} — ${driverName}` : plate;
-            return { id: plate, kodas: plate, display };
+            return { id: plate, kodas: plate };
           });
           setVehicles(norm);
         }
@@ -161,7 +168,7 @@ const InspectorPage: React.FC = () => {
                   <option value="">Pasirinkite transporto priemonę...</option>
                   {vehicles.map((v) => (
                     <option key={v.id ?? v.kodas} value={v.kodas}>
-                      {v.display ?? v.kodas}
+                      {v.kodas}
                     </option>
                   ))}
                 </select>
@@ -176,7 +183,7 @@ const InspectorPage: React.FC = () => {
               )}
             </div>
             <div>
-              <label className="block text-sm mb-1">Nuolaida tipo kodas</label>
+              <label className="block text-sm mb-1">Nuolaida</label>
               <select
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={discountType}
@@ -221,7 +228,16 @@ const InspectorPage: React.FC = () => {
               {result.message && <p className="mt-2">{result.message}</p>}
               {result.expiresAt && (
                 <p className="text-xs text-slate-600 mt-2">
-                  Galioja iki: {new Date(result.expiresAt).toLocaleString()}
+                  {(() => {
+                    // Ensure date is shown in user's local timezone and include zone suffix
+                    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    // Some backends return ISO without timezone; treat as UTC if no offset present
+                    const raw = String(result.expiresAt);
+                    const isOffseted = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(raw);
+                    const date = new Date(isOffseted ? raw : raw + 'Z');
+                    const localStr = date.toLocaleString('lt-LT', { timeZone: tz, timeZoneName: 'short' });
+                    return `Galioja iki: ${localStr}`;
+                  })()}
                 </p>
               )}
             </div>

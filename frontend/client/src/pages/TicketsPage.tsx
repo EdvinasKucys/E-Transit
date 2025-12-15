@@ -415,22 +415,28 @@ const TicketsPage: React.FC = () => {
               <tr>
                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">ID</th>
                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Kaina</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Nuolaida</th>
                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Statusas</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {tickets.map((t) => (
-                <tr key={t.id}>
-                  <td className="px-4 py-2">{t.id}</td>
-                  <td className="px-4 py-2">{t.galutineKaina} €</td>
-                  <td className="px-4 py-2">
-                    {t.statusas === 1 ? "Nupirktas" :
-                     t.statusas === 2 ? "Aktyvuotas" :
-                     t.statusas === 3 ? "Pasibaigęs" :
-                     "Nežinomas"}
-                  </td>
-                </tr>
-              ))}
+              {tickets.map((t) => {
+                const discount = discounts.find((d) => d.id === t.nuolaidaId);
+                const discountName = discount ? `${discount.name} (${discount.percent}%)` : "Be nuolaidos";
+                return (
+                  <tr key={t.id}>
+                    <td className="px-4 py-2">{t.id}</td>
+                    <td className="px-4 py-2">{t.galutineKaina} €</td>
+                    <td className="px-4 py-2">{discountName}</td>
+                    <td className="px-4 py-2">
+                      {t.statusas === 1 ? "Nupirktas" :
+                       t.statusas === 2 ? "Aktyvuotas" :
+                       t.statusas === 3 ? "Pasibaigęs" :
+                       "Nežinomas"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
