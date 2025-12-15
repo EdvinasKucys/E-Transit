@@ -10,6 +10,7 @@ namespace Api.DTOs
         public DateTime SukurimoData { get; set; }
         public DateTime AtnaujinimoData { get; set; }
         public List<MarstrutoStoteleDto>? Stoteles { get; set; }
+        public int? Trukme { get; set; }
     }
 
     public class CreateMarsrutasDto
@@ -20,6 +21,7 @@ namespace Api.DTOs
         public string PabaigosStotele { get; set; } = string.Empty;
         public float? BendrasAtstumas { get; set; }
         public List<CreateMarstrutoStoteleDto>? Stoteles { get; set; }
+        public int? Trukme { get; set; }
     }
 
     public class UpdateMarsrutasDto
@@ -29,5 +31,6 @@ namespace Api.DTOs
         public string PabaigosStotele { get; set; } = string.Empty;
         public float? BendrasAtstumas { get; set; }
         public List<CreateMarstrutoStoteleDto>? Stoteles { get; set; }
+        public int? Trukme { get; set; }
     }
 }

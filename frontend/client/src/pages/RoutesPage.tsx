@@ -95,6 +95,18 @@ const RoutesPage: React.FC = () => {
     return filtered;
   }, [routes, searchTerm, selectedFromStop, selectedToStop, norm]);
 
+  const [sortBy, setSortBy] = useState<"numeris" | "pavadinimas">("numeris");
+
+  // Add sorting
+  const sortedRoutes = useMemo(() => {
+    return [...filteredRoutes].sort((a, b) => {
+      if (sortBy === "numeris") {
+        return String(a.numeris).localeCompare(String(b.numeris));
+      }
+      return a.pavadinimas.localeCompare(b.pavadinimas);
+    });
+  }, [filteredRoutes, sortBy]);
+  
   const handleViewDetails = useCallback(async (numeris: number | string) => {
     try {
       const route = await routesService.getOne(String(numeris));

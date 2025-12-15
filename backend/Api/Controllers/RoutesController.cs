@@ -253,21 +253,52 @@ namespace Api.Controllers
         {
             try
             {
+                var hasActiveSchedules = await _context.Tvarkarastiai
+                    .AnyAsync(t => t.MarsrutoNr == numeris);
+
+                if (hasActiveSchedules)
+                {
+                    return Problem(
+                        title: "Maršrutas turi aktyvių tvarkaraščių ir negali būti ištrintas",
+                        detail: "Pirmiausia pašalinkite visus su šiuo maršrutu susijusius tvarkaraščius.",
+                        statusCode: StatusCodes.Status400BadRequest
+                    );
+                }
+
                 var route = await _context.Marsrutai.FindAsync(numeris);
 
                 if (route == null)
-                    return NotFound($"Route {numeris} not found");
+                {
+                    return Problem(
+                        title: $"Maršrutas {numeris} nerastas",
+                        statusCode: StatusCodes.Status404NotFound
+                    );
+                }
 
                 _context.Marsrutai.Remove(route);
                 await _context.SaveChangesAsync();
 
                 return NoContent();
             }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Nepavyko ištrinti maršruto {Numeris}", numeris);
+                return Problem(
+                    title: "Maršrutas negali būti ištrintas",
+                    detail: "Maršrutas vis dar naudojamas sistemoje (tvarkaraščiuose arba transporto priemonėse).",
+                    statusCode: StatusCodes.Status400BadRequest
+                );
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting route {Numeris}", numeris);
-                return StatusCode(500, $"Error: {ex.Message}");
+                _logger.LogError(ex, "Klaida trinant maršrutą {Numeris}", numeris);
+                return Problem(
+                    title: "Įvyko nenumatyta klaida",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status500InternalServerError
+                );
             }
         }
+
     }
 }

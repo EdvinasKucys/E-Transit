@@ -161,18 +161,66 @@ namespace Api.Controllers
                 var stop = await _context.Stoteles.FindAsync(pavadinimas);
 
                 if (stop == null)
-                    return NotFound($"Stop '{pavadinimas}' not found");
+                {
+                    return Problem(
+                        title: $"Stotelė '{pavadinimas}' nerasta",
+                        statusCode: StatusCodes.Status404NotFound
+                    );
+                }
+
+                var usedInRoutes = await _context.Marsrutai
+                    .Where(m => m.PradziosStotele == pavadinimas || m.PabaigosStotele == pavadinimas)
+                    .Select(m => m.Numeris)
+                    .ToListAsync();
+
+                if (usedInRoutes.Any())
+                {
+                    return Problem(
+                        title: $"Stotelė '{pavadinimas}' yra naudojama aktyviuose maršrutuose ir negali būti ištrinta",
+                        detail: $"Stotelė naudojama maršrutuose: {string.Join(", ", usedInRoutes)}",
+                        statusCode: StatusCodes.Status400BadRequest
+                    );
+                }
+
+                var usedInRouteStops = await _context.MarstrutoStoteles
+                    .Where(ms => ms.StotelesPavadinimas == pavadinimas)
+                    .Select(ms => ms.MarsrutoNr)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (usedInRouteStops.Any())
+                {
+                    return Problem(
+                        title: $"Stotelė '{pavadinimas}' yra naudojama aktyviuose maršrutuose kaip tarpinė stotelė",
+                        detail: $"Stotelė naudojama maršrutuose: {string.Join(", ", usedInRouteStops)}",
+                        statusCode: StatusCodes.Status400BadRequest
+                    );
+                }
 
                 _context.Stoteles.Remove(stop);
                 await _context.SaveChangesAsync();
 
                 return NoContent();
             }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Nepavyko ištrinti stotelės {Pavadinimas}", pavadinimas);
+                return Problem(
+                    title: "Stotelė negali būti ištrinta",
+                    detail: "Stotelė vis dar naudojama sistemoje.",
+                    statusCode: StatusCodes.Status400BadRequest
+                );
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting stop {Pavadinimas}", pavadinimas);
-                return StatusCode(500, $"Error: {ex.Message}");
+                _logger.LogError(ex, "Klaida trinant stotelę {Pavadinimas}", pavadinimas);
+                return Problem(
+                    title: "Įvyko nenumatyta klaida",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status500InternalServerError
+                );
             }
         }
+
     }
 }
